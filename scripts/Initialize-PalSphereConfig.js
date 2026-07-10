@@ -27,13 +27,15 @@ const defaultText = fs.readFileSync(defaultPath, 'utf8');
 const parsed = parseConfig(defaultText);
 const schema = buildSchema(parsed.entries, parsed.entries);
 const values = { ...parsed.values };
+const gamePort = Number(process.env.PALSPHERE_GAME_PORT || values.PublicPort || 8211);
+if (!Number.isInteger(gamePort) || gamePort < 1 || gamePort > 65535) throw new Error('The game port must be an integer from 1 to 65535.');
 const managedValues = {
   ServerName: serverName,
   ServerDescription: 'Private server managed by PalSphere Server Studio',
   ServerPassword: serverPassword,
   AdminPassword: adminPassword,
   PublicIP: '',
-  PublicPort: 8211,
+  PublicPort: gamePort,
   ServerPlayerMaxNum: 32,
   RESTAPIEnabled: true,
   RESTAPIPort: 8212,
@@ -60,10 +62,10 @@ const privateInfo = [
   `Server name: ${serverName}`,
   `Join password: ${serverPassword}`,
   `Administrator password: ${adminPassword}`,
-  'Game port: UDP 8211',
+  `Game port: UDP ${gamePort}`,
   '',
   'Router setup:',
-  'Forward external UDP 8211 to this computer on internal UDP 8211.',
+  `Forward external UDP ${gamePort} to this computer on internal UDP ${gamePort}.`,
   'Reserve this computer\'s LAN address in the router so it does not change.',
   '',
   'Never upload this file, your server configuration, saves, logs, or backups.',

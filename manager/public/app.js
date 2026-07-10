@@ -232,6 +232,7 @@ function renderStatus() {
   $('#check-watchdog-row').classList.toggle('done', status.watchdog.enabled && status.watchdog.phase !== 'locked');
   $('#check-autostart').textContent = status.autostartEnabled ? 'Quiet startup at Windows sign-in' : 'Disabled in recovery settings';
   $('#check-autostart-row').classList.toggle('done', status.autostartEnabled);
+  $('#check-firewall').textContent = `UDP ${status.port} allowed for Palworld`;
   $('#check-router').textContent = `UDP ${status.port} → ${status.lanIp}`;
   renderWatchdogStatus();
   renderStartupStatus();

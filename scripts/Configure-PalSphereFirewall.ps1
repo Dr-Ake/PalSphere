@@ -4,8 +4,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ruleName = 'PalSphere - Palworld Game Server (UDP 8211)'
-$legacyRuleName = 'Palworld Dedicated Server - UDP 8211'
+$ruleName = 'PalSphere - Palworld Game Server (UDP)'
+$legacyRuleNames = @(
+    'PalSphere - Palworld Game Server (UDP 8211)',
+    'Palworld Dedicated Server - UDP 8211'
+)
 $serverExe = Join-Path $InstallRoot 'server\Pal\Binaries\Win64\PalServer-Win64-Shipping-Cmd.exe'
 
 if (-not (Test-Path -LiteralPath $serverExe)) {
@@ -13,7 +16,9 @@ if (-not (Test-Path -LiteralPath $serverExe)) {
 }
 
 Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-Get-NetFirewallRule -DisplayName $legacyRuleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+foreach ($legacyRuleName in $legacyRuleNames) {
+    Get-NetFirewallRule -DisplayName $legacyRuleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+}
 
 New-NetFirewallRule `
     -DisplayName $ruleName `
@@ -23,7 +28,6 @@ New-NetFirewallRule `
     -Enabled True `
     -Profile Private,Public `
     -Protocol UDP `
-    -LocalPort 8211 `
     -Program $serverExe | Out-Null
 
-Write-Host 'Windows Firewall: program-scoped inbound UDP 8211 is enabled.' -ForegroundColor Green
+Write-Host 'Windows Firewall: program-scoped inbound game UDP is enabled for Palworld.' -ForegroundColor Green

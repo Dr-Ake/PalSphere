@@ -3,11 +3,12 @@
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
-const os = require('os');
+const net = require('net');
 const path = require('path');
 const { execFile, spawn } = require('child_process');
 const { promisify } = require('util');
 const { buildConfig, parseConfig } = require('./lib/config');
+const { resolveLanIp } = require('./lib/network');
 const { GROUPS, buildSchema } = require('./lib/schema');
 const { CrashWatchdog, normalizeWatchdogSettings } = require('./lib/watchdog');
 
@@ -31,6 +32,7 @@ const PALSERVER_PATH = path.join(SERVER_DIR, 'PalServer.exe');
 const STARTUP_SCRIPT_PATH = path.join(ROOT, 'scripts', 'Register-PalSphereStartup.ps1');
 const HOST = process.env.PAL_MANAGER_HOST || '127.0.0.1';
 const PORT = Number(process.env.PAL_MANAGER_PORT || 8219);
+const PUBLIC_IP_LOOKUP_URL = process.env.PAL_PUBLIC_IP_LOOKUP_URL || 'https://api.ipify.org?format=json';
 const TEST_MODE = process.env.PAL_MANAGER_TEST_MODE === '1';
 const MANAGER_VERSION = '1.2.1';
 const AUTOSTART_TASK_NAME = 'PalSphere Server Studio';
@@ -44,6 +46,7 @@ let shuttingDown = false;
 let publicIpCache = null;
 let runtimeCache = { at: 0, data: null };
 let autostartCache = { at: 0, enabled: false };
+let lanIpCache = { at: 0, value: null };
 let watchdog = null;
 
 function readJsonFile(filePath, fallback) {
@@ -154,14 +157,10 @@ async function setAutostartEnabled(enabled) {
   return enabled;
 }
 
-function getLanIp() {
-  const candidates = [];
-  for (const interfaces of Object.values(os.networkInterfaces())) {
-    for (const entry of interfaces || []) {
-      if (entry.family === 'IPv4' && !entry.internal) candidates.push(entry.address);
-    }
-  }
-  return candidates.find((ip) => /^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(ip)) || candidates[0] || '127.0.0.1';
+async function getLanIp() {
+  if (Date.now() - lanIpCache.at < 30000 && lanIpCache.value) return lanIpCache.value;
+  lanIpCache = { at: Date.now(), value: await resolveLanIp() };
+  return lanIpCache.value;
 }
 
 function httpRequest(url, { method = 'GET', headers = {}, body, timeout = 4000 } = {}) {
@@ -376,7 +375,7 @@ async function buildStatus() {
     autoSaveSeconds: values.AutoSaveSpan,
     rollingBackups: values.bIsUseBackupSaveData,
     joinPassword: values.ServerPassword,
-    lanIp: getLanIp(),
+    lanIp: await getLanIp(),
     publicIp: publicIpCache,
     port: Number(values.PublicPort || 8211),
     builtInBackupCount: builtInBackups.count,
@@ -545,9 +544,16 @@ async function updateServer() {
 }
 
 async function refreshPublicIp() {
+  const configuredIp = String(readConfigBundle().values.PublicIP || '').trim();
+  if (net.isIP(configuredIp) === 4) {
+    publicIpCache = configuredIp;
+    return publicIpCache;
+  }
   try {
-    const result = await httpRequest('https://api.ipify.org?format=json', { timeout: 8000 });
-    publicIpCache = result.json?.ip || null;
+    const result = await httpRequest(PUBLIC_IP_LOOKUP_URL, { timeout: 8000 });
+    const discoveredIp = String(result.json?.ip || result.text || '').trim();
+    if (net.isIP(discoveredIp) !== 4) throw new Error('Public IP discovery returned an invalid IPv4 address.');
+    publicIpCache = discoveredIp;
   } catch {
     publicIpCache = null;
   }

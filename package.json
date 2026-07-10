@@ -9,6 +9,6 @@
   },
   "scripts": {
     "test": "node --test manager/tests/*.test.js",
-    "check": "node --check manager/server-manager.js && node --check manager/public/app.js && node --check manager/lib/watchdog.js"
+    "check": "node --check manager/server-manager.js && node --check manager/public/app.js && node --check manager/lib/network.js && node --check manager/lib/watchdog.js"
   }
 }

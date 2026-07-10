@@ -10,7 +10,7 @@ PalSphere does **not** redistribute Palworld, SteamCMD, Node.js, DirectX, or Mic
 - Portable Node.js LTS runtime with SHA-256 verification
 - Official SteamCMD and Palworld Dedicated Server app `2394010`
 - Microsoft Visual C++ and DirectX runtime installation
-- Program-scoped Windows Firewall rule for inbound `UDP 8211`
+- Program-scoped Windows Firewall rule that follows the configured game UDP port
 - Local-only browser dashboard on `127.0.0.1:8219`
 - Editing for every setting supplied by the installed Palworld server
 - Graceful save, shutdown, update, backup, and restore controls
@@ -59,8 +59,8 @@ Windows Firewall is configured automatically. Router forwarding cannot be automa
 In the router:
 
 1. Reserve the server computer's LAN address using DHCP reservation.
-2. Forward external **UDP 8211** to that LAN address on internal **UDP 8211**.
-3. Do not forward TCP 8211, REST port 8212, manager port 8219, or RCON port 25575.
+2. Forward the configured external **UDP game port** to that LAN address on the same internal port. The default is `8211`; the dashboard always shows the current value.
+3. Do not forward the TCP version of the game port, the REST API port, the manager port, or the RCON port.
 
 Friends connect using the public address shown on the PalSphere dashboard. Players on the same home network use the LAN address.
 

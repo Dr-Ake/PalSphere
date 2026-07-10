@@ -45,6 +45,21 @@ test('Windows startup is controlled by the real scheduled-task helper', () => {
   assert.match(startup, /Unregister-ScheduledTask/);
 });
 
+test('network setup follows runtime addresses and the configured game port', () => {
+  const firewall = fs.readFileSync(path.join(root, 'scripts', 'Configure-PalSphereFirewall.ps1'), 'utf8');
+  const initializer = fs.readFileSync(path.join(root, 'scripts', 'Initialize-PalSphereConfig.js'), 'utf8');
+  const manager = fs.readFileSync(path.join(root, 'manager', 'server-manager.js'), 'utf8');
+  assert.match(firewall, /-Program \$serverExe/);
+  assert.match(firewall, /-Protocol UDP/);
+  assert.doesNotMatch(firewall, /-LocalPort\s+8211/);
+  assert.match(initializer, /PALSPHERE_GAME_PORT/);
+  assert.match(initializer, /UDP \$\{gamePort\}/);
+  assert.match(manager, /resolveLanIp/);
+  assert.match(manager, /PAL_PUBLIC_IP_LOOKUP_URL/);
+  assert.match(manager, /net\.isIP\(discoveredIp\)/);
+  assert.doesNotMatch(manager, /64\.188\.248\.97|192\.168\.0\./);
+});
+
 test('launcher identifies its own manager and cleans up an orphan after the install folder moves', () => {
   const manager = fs.readFileSync(path.join(root, 'manager', 'server-manager.js'), 'utf8');
   const launcher = fs.readFileSync(path.join(root, 'manager', 'launch-manager.ps1'), 'utf8');

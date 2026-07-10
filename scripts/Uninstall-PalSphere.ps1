@@ -68,8 +68,9 @@ if (-not $KeepDownloadedFiles) {
 }
 
 & (Join-Path $InstallRoot 'scripts\Register-PalSphereStartup.ps1') -InstallRoot $InstallRoot -Remove
-Get-NetFirewallRule -DisplayName 'PalSphere - Palworld Game Server (UDP 8211)' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-Get-NetFirewallRule -DisplayName 'Palworld Dedicated Server - UDP 8211' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+foreach ($ruleName in @('PalSphere - Palworld Game Server (UDP)', 'PalSphere - Palworld Game Server (UDP 8211)', 'Palworld Dedicated Server - UDP 8211')) {
+    Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+}
 
 if (-not $KeepDownloadedFiles) {
     foreach ($path in @(

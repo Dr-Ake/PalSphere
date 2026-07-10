@@ -3,6 +3,8 @@ param(
     [string] $InstallRoot,
     [string] $ServerName,
     [string] $ServerPassword,
+    [ValidateRange(1, 65535)]
+    [int] $GamePort = 8211,
     [switch] $NonInteractive,
     [switch] $SkipPrerequisites,
     [switch] $DryRun
@@ -197,7 +199,7 @@ if ($DryRun) {
     Write-Host 'Would download SteamCMD from Valve and app 2394010 from Steam.'
     Write-Host 'Would install Microsoft Visual C++ and DirectX runtimes.'
     Write-Host 'Would create a fresh private Palworld configuration only when none exists.'
-    Write-Host 'Would allow only program-scoped inbound UDP 8211 and register local watchdog startup.'
+    Write-Host "Would allow program-scoped inbound game UDP and configure the default game port as $GamePort."
     Write-Host 'Dry run passed.' -ForegroundColor Green
     exit 0
 }
@@ -238,6 +240,7 @@ if ($firstInstall) {
     $env:PALSPHERE_SERVER_NAME = $ServerName
     $env:PALSPHERE_SERVER_PASSWORD = $ServerPassword
     $env:PALSPHERE_ADMIN_PASSWORD = [Guid]::NewGuid().ToString('N')
+    $env:PALSPHERE_GAME_PORT = [string] $GamePort
     try {
         & $nodeExe $ConfigInitializer
         if ($LASTEXITCODE -ne 0) { throw "Configuration initialization failed with exit code $LASTEXITCODE." }
@@ -246,10 +249,17 @@ if ($firstInstall) {
         Remove-Item Env:PALSPHERE_SERVER_NAME -ErrorAction SilentlyContinue
         Remove-Item Env:PALSPHERE_SERVER_PASSWORD -ErrorAction SilentlyContinue
         Remove-Item Env:PALSPHERE_ADMIN_PASSWORD -ErrorAction SilentlyContinue
+        Remove-Item Env:PALSPHERE_GAME_PORT -ErrorAction SilentlyContinue
     }
 }
 else {
     Write-Host 'Existing world, configuration, passwords, and saves were preserved.' -ForegroundColor Green
+}
+
+$configuredGamePort = $GamePort
+if (Test-Path -LiteralPath $configPath) {
+    $portMatch = [regex]::Match((Get-Content -LiteralPath $configPath -Raw), '(?:^|,)PublicPort=(\d+)')
+    if ($portMatch.Success) { $configuredGamePort = [int] $portMatch.Groups[1].Value }
 }
 
 $managerSettings = Join-Path $InstallRoot 'manager\manager-settings.json'
@@ -284,4 +294,4 @@ if ($firstInstall) {
     Write-Host 'Your generated join and administrator passwords are in:' -ForegroundColor Yellow
     Write-Host "  $(Join-Path $InstallRoot 'PalSphere Server Info - Private.txt')" -ForegroundColor Yellow
 }
-Write-Host 'Router: forward UDP 8211 to this computer and reserve its LAN address.'
+Write-Host "Router: forward UDP $configuredGamePort to the LAN address shown by PalSphere and reserve that address."
