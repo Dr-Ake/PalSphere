@@ -45,5 +45,7 @@ test('status refresh can be manual or automatically repeated by preference', () 
   assert.match(app, /handleStatusRefresh/);
   assert.match(app, /setAutoRefresh/);
   assert.match(app, /palsphere:auto-refresh/);
+  assert.match(app, /TRANSITIONAL_SERVER_STATES/);
+  assert.match(app, /syncTransitionRefresh/);
   assert.doesNotMatch(app, /setInterval\(\(\) => refreshStatus\(\), 2500\)/);
 });

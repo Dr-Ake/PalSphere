@@ -4,6 +4,9 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const AUTO_REFRESH_INTERVAL_MS = 2500;
 const AUTO_REFRESH_STORAGE_KEY = 'palsphere:auto-refresh';
+const TRANSITION_REFRESH_INTERVAL_MS = 2500;
+const TRANSITION_REFRESH_MAX_ATTEMPTS = 48;
+const TRANSITIONAL_SERVER_STATES = new Set(['starting', 'recovering', 'updating']);
 
 function loadAutoRefreshPreference() {
   try {
@@ -28,6 +31,9 @@ const state = {
   lastServerState: null,
   autoRefresh: loadAutoRefreshPreference(),
   statusRefreshTimer: null,
+  transitionRefreshTimer: null,
+  transitionRefreshAttempts: 0,
+  transitionRefreshExhausted: false,
 };
 
 const pageMeta = {
@@ -287,6 +293,37 @@ async function refreshStatus({ quiet = true } = {}) {
   } catch (error) {
     if (!quiet) toast('Could not refresh status', error.message, 'error');
   }
+  syncTransitionRefresh();
+}
+
+function clearTransitionRefresh({ resetAttempts = true } = {}) {
+  if (state.transitionRefreshTimer) clearTimeout(state.transitionRefreshTimer);
+  state.transitionRefreshTimer = null;
+  if (resetAttempts) {
+    state.transitionRefreshAttempts = 0;
+    state.transitionRefreshExhausted = false;
+  }
+}
+
+function syncTransitionRefresh() {
+  const isTransitioning = TRANSITIONAL_SERVER_STATES.has(state.status?.state);
+  if (state.autoRefresh || !isTransitioning) {
+    clearTransitionRefresh();
+    return;
+  }
+  if (state.transitionRefreshTimer) return;
+  if (state.transitionRefreshAttempts >= TRANSITION_REFRESH_MAX_ATTEMPTS) {
+    if (!state.transitionRefreshExhausted) {
+      state.transitionRefreshExhausted = true;
+      toast('Status checks paused', 'The server is taking longer than expected. Use Refresh to check it again.', 'error', 6500);
+    }
+    return;
+  }
+  state.transitionRefreshTimer = setTimeout(async () => {
+    state.transitionRefreshTimer = null;
+    state.transitionRefreshAttempts += 1;
+    await refreshStatus();
+  }, TRANSITION_REFRESH_INTERVAL_MS);
 }
 
 function setAutoRefresh(enabled, { persist = true, refreshNow = false } = {}) {
@@ -297,8 +334,11 @@ function setAutoRefresh(enabled, { persist = true, refreshNow = false } = {}) {
     state.statusRefreshTimer = null;
   }
   if (state.autoRefresh) {
+    clearTransitionRefresh();
     if (refreshNow) refreshStatus();
     state.statusRefreshTimer = setInterval(() => refreshStatus(), AUTO_REFRESH_INTERVAL_MS);
+  } else {
+    syncTransitionRefresh();
   }
   if (persist) {
     try { localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, String(state.autoRefresh)); } catch { /* preference storage unavailable */ }
@@ -308,6 +348,7 @@ function setAutoRefresh(enabled, { persist = true, refreshNow = false } = {}) {
 async function handleStatusRefresh() {
   const button = $('#refresh-status');
   if (button.disabled) return;
+  clearTransitionRefresh();
   button.disabled = true;
   button.classList.add('is-refreshing');
   button.setAttribute('aria-busy', 'true');
