@@ -612,7 +612,9 @@ function serveStatic(requestPath, response) {
 }
 
 async function handleApi(request, response, pathname) {
-  if (request.method === 'GET' && pathname === '/api/health') return sendJson(response, 200, { ok: true, version: MANAGER_VERSION });
+  if (request.method === 'GET' && pathname === '/api/health') {
+    return sendJson(response, 200, { ok: true, version: MANAGER_VERSION, installRoot: ROOT });
+  }
   if (request.method === 'GET' && pathname === '/api/status') return sendJson(response, 200, await buildStatus());
   if (request.method === 'GET' && pathname === '/api/settings') return sendJson(response, 200, readConfigBundle());
   if (request.method === 'GET' && pathname === '/api/manager/settings') return sendJson(response, 200, managerSettings);
