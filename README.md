@@ -1,0 +1,1 @@
+# Palworld-1.0-server-manager
