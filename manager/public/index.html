@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09101d">
+  <title>PalSphere Server Studio</title>
+  <link rel="icon" href="/palsphere-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div id="loading-screen" class="loading-screen">
+    <img src="/palsphere-logo.svg" alt="" class="loading-logo">
+    <div class="loading-copy">
+      <strong>Waking PalSphere</strong>
+      <span>Reading your server world…</span>
+    </div>
+    <div class="loading-bar"><span></span></div>
+  </div>
+
+  <div id="app" class="app-shell is-loading">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="/palsphere-logo.svg" alt="PalSphere logo" class="brand-logo">
+        <div>
+          <div class="brand-name">PalSphere</div>
+          <div class="brand-subtitle">Server Studio</div>
+        </div>
+      </div>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-page="dashboard">
+          <span class="nav-icon">⌂</span><span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-page="settings">
+          <span class="nav-icon">⌁</span><span>Server settings</span>
+          <span id="settings-count" class="nav-count">—</span>
+        </button>
+        <button class="nav-item" data-page="backups">
+          <span class="nav-icon">◫</span><span>Saves & backups</span>
+        </button>
+        <button class="nav-item" data-page="activity">
+          <span class="nav-icon">⌁</span><span>Activity & tools</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="local-card">
+        <div class="local-card-icon">⌾</div>
+        <div>
+          <strong>Local-only controls</strong>
+          <p>This studio listens only on this PC. Keep router forwarding on UDP 8211 only.</p>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <span id="manager-version">Manager v—</span>
+        <button class="text-button" id="close-manager">Close studio</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="page-eyebrow">SERVER OVERVIEW</p>
+          <h1 id="page-title">Dashboard</h1>
+        </div>
+        <div class="top-actions">
+          <div id="global-status" class="status-pill offline">
+            <span class="status-dot"></span>
+            <span class="status-label">Offline</span>
+          </div>
+          <button class="button ghost running-only" id="save-now-top" hidden>Save now</button>
+          <button class="button danger running-only" id="stop-server-top" hidden>Stop safely</button>
+          <button class="button primary stopped-only" id="start-server-top">Start server</button>
+        </div>
+      </header>
+
+      <section class="page active" data-page-panel="dashboard">
+        <div class="hero-card">
+          <div class="hero-copy">
+            <div class="hero-kicker"><span class="pulse-dot"></span><span id="hero-kicker">Ready for adventure</span></div>
+            <h2 id="server-name">Palworld Server</h2>
+            <p id="server-description">Loading your world details…</p>
+            <div class="address-row">
+              <button class="address-chip" id="copy-public-address">
+                <span class="chip-label">Friends connect</span>
+                <strong id="public-address">Checking public IP…</strong>
+                <span class="copy-mark">Copy</span>
+              </button>
+              <button class="address-chip secondary" id="copy-lan-address">
+                <span class="chip-label">Home network</span>
+                <strong id="lan-address">—</strong>
+                <span class="copy-mark">Copy</span>
+              </button>
+            </div>
+            <div class="hero-actions">
+              <button class="button primary large stopped-only" id="start-server-hero">▶ Start server</button>
+              <button class="button danger large running-only" id="stop-server-hero" hidden>■ Save & stop</button>
+              <button class="button ghost large" id="launch-palworld">Launch Palworld</button>
+            </div>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="orbit orbit-one"><i></i></div>
+            <div class="orbit orbit-two"><i></i></div>
+            <img src="/palsphere-logo.svg" alt="" class="hero-logo">
+            <div class="world-tag"><span>WORLD</span><strong id="world-state-label">STANDBY</strong></div>
+          </div>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card mint">
+            <div class="metric-icon">♙</div>
+            <div><span>Players online</span><strong><b id="player-count">0</b> / <b id="player-limit">32</b></strong><small id="player-note">Server is offline</small></div>
+          </article>
+          <article class="metric-card violet">
+            <div class="metric-icon">↻</div>
+            <div><span>World autosave</span><strong><b id="autosave-seconds">30</b> sec</strong><small id="autosave-note">Rolling backups enabled</small></div>
+          </article>
+          <article class="metric-card amber">
+            <div class="metric-icon">▣</div>
+            <div><span>Built-in backups</span><strong id="builtin-backup-count">0</strong><small id="latest-backup">No backup detected</small></div>
+          </article>
+          <article class="metric-card blue">
+            <div class="metric-icon">◇</div>
+            <div><span>Server build</span><strong id="build-id">—</strong><small id="server-version">Palworld 1.0 dedicated server</small></div>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel protection-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">WORLD PROTECTION</p><h3>Save system</h3></div>
+              <span id="protection-badge" class="mini-badge success">Protected</span>
+            </div>
+            <div class="protection-visual">
+              <div class="shield">✓</div>
+              <div><strong>Layered world protection</strong><p>Timed saves, rolling backups, portable snapshots, and bounded automatic crash recovery.</p></div>
+            </div>
+            <div class="mini-stat-row">
+              <div><span>Autosave</span><strong id="save-layer-auto">Every 30 sec</strong></div>
+              <div><span>Rolling copies</span><strong id="save-layer-built-in">On</strong></div>
+              <div><span>Portable</span><strong id="save-layer-manual">0</strong></div>
+              <div><span>Recovery</span><strong id="save-layer-recovery">Armed</strong></div>
+            </div>
+            <button class="button soft full-width" data-go-page="backups">Manage saves & backups</button>
+          </article>
+
+          <article class="panel checklist-panel">
+            <div class="panel-heading"><div><p class="eyebrow">READINESS</p><h3>Adventure checklist</h3></div></div>
+            <div class="check-list">
+              <div class="check-row done"><span>✓</span><div><strong>Dedicated server installed</strong><small id="check-build">Build —</small></div></div>
+              <div class="check-row done"><span>✓</span><div><strong>Windows Firewall ready</strong><small>UDP 8211 allowed for Palworld</small></div></div>
+              <div class="check-row done"><span>✓</span><div><strong>Autosaves & backups on</strong><small id="check-autosave">Every 30 seconds</small></div></div>
+              <div class="check-row done" id="check-watchdog-row"><span>✓</span><div><strong>Crash recovery ready</strong><small id="check-watchdog">Checks every 15 seconds</small></div></div>
+              <div class="check-row done" id="check-autostart-row"><span>✓</span><div><strong>Manager starts with Windows</strong><small id="check-autostart">Quiet startup at sign-in</small></div></div>
+              <div class="check-row"><span>6</span><div><strong>Router forward</strong><small id="check-router">UDP 8211 → this PC</small></div></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" data-page-panel="settings">
+        <div id="settings-lock" class="lock-banner" hidden>
+          <span>🔒</span><div><strong>Settings are locked while the server runs</strong><p>Stop the server safely to edit and save configuration.</p></div>
+        </div>
+        <div class="settings-toolbar">
+          <label class="search-box"><span>⌕</span><input id="settings-search" type="search" placeholder="Search all server settings…"></label>
+          <label class="preset-select"><span>Preset</span><select id="preset-picker"><option value="">Choose a preset…</option><option value="casual">Relaxed co-op</option><option value="vanilla">Palworld defaults</option><option value="survival">Hard survival</option></select></label>
+          <span id="dirty-badge" class="dirty-badge" hidden>Unsaved changes</span>
+          <button class="button ghost" id="reset-settings" disabled>Discard</button>
+          <button class="button primary" id="save-settings" disabled>Save settings</button>
+        </div>
+        <div id="settings-groups" class="settings-groups" role="tablist"></div>
+        <div class="settings-summary">
+          <div><p class="eyebrow" id="group-eyebrow">SETTINGS</p><h2 id="group-title">Identity & Access</h2><p id="group-description">Name, passwords, players, and platforms.</p></div>
+          <div class="summary-count"><strong id="visible-settings-count">0</strong><span>options shown</span></div>
+        </div>
+        <div id="settings-grid" class="settings-grid"></div>
+        <div id="no-settings" class="empty-state" hidden><strong>No matching settings</strong><p>Try another search phrase or category.</p></div>
+      </section>
+
+      <section class="page" data-page-panel="backups">
+        <div class="backup-hero panel">
+          <div>
+            <p class="eyebrow">SAVE SYSTEM</p>
+            <h2>Your world has layers of protection.</h2>
+            <p>Palworld saves the active world every <strong id="backup-autosave">30 seconds</strong> and keeps short-, hourly-, and daily rolling copies. Portable snapshots live outside the game save folder for easy restores.</p>
+          </div>
+          <div class="backup-hero-actions">
+            <button class="button primary" id="create-backup">Create portable backup</button>
+            <button class="button ghost" data-open-folder="backups">Open backup folder</button>
+          </div>
+        </div>
+
+        <div class="backup-stat-grid">
+          <article class="backup-stat"><span>Autosave cadence</span><strong id="backup-stat-auto">30 sec</strong><small>Configured in Palworld</small></article>
+          <article class="backup-stat"><span>Rolling backups</span><strong id="backup-stat-rolling">Enabled</strong><small id="backup-stat-rolling-count">0 copies found</small></article>
+          <article class="backup-stat"><span>Portable backups</span><strong id="backup-stat-portable">0</strong><small>Manager snapshots retained: 12</small></article>
+        </div>
+
+        <article class="panel backup-list-panel">
+          <div class="panel-heading">
+            <div><p class="eyebrow">RESTORE POINTS</p><h3>Portable world backups</h3></div>
+            <button class="text-button" data-open-folder="saves">Open live saves</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Backup</th><th>Created</th><th>Size</th><th></th></tr></thead>
+              <tbody id="backup-table-body"></tbody>
+            </table>
+          </div>
+          <div id="backup-empty" class="empty-state"><strong>No portable backups yet</strong><p>Stop the server and create one before major changes or updates.</p></div>
+        </article>
+      </section>
+
+      <section class="page" data-page-panel="activity">
+        <div class="tool-grid">
+          <article class="panel update-panel">
+            <div class="tool-icon">↥</div>
+            <div><p class="eyebrow">SERVER FILES</p><h3>Update & verify</h3><p>Downloads the newest Palworld dedicated server and validates every installed file through SteamCMD.</p></div>
+            <button class="button primary" id="update-server">Update server</button>
+          </article>
+          <article class="panel folder-panel">
+            <div class="tool-icon">⌑</div>
+            <div><p class="eyebrow">QUICK ACCESS</p><h3>Server folders</h3><p>Jump directly to the live config, saves, server files, or manager backups.</p></div>
+            <div class="folder-buttons"><button class="button soft" data-open-folder="config">Config</button><button class="button soft" data-open-folder="saves">Saves</button><button class="button soft" data-open-folder="server">Server</button></div>
+          </article>
+        </div>
+
+        <article class="panel recovery-panel">
+          <div class="panel-heading">
+            <div><p class="eyebrow">AUTOMATIC RECOVERY</p><h3>Crash watchdog</h3><p>Restarts Palworld after an unexpected exit without restoring or rolling back your world automatically.</p></div>
+            <span id="watchdog-state-badge" class="mini-badge success">Armed</span>
+          </div>
+          <label class="startup-row">
+            <span><strong>Start PalSphere with Windows</strong><small id="startup-live-detail">Starts the hidden manager at sign-in and restores an expected-online server.</small></span>
+            <span class="startup-action"><small id="startup-state">Enabled</small><span class="toggle"><input id="startup-enabled" type="checkbox" checked><span class="toggle-track"></span></span></span>
+          </label>
+          <div class="recovery-settings">
+            <label class="recovery-toggle"><span><strong>Enable watchdog</strong><small id="watchdog-live-detail">Armed when the server is started</small></span><span class="toggle"><input id="watchdog-enabled" type="checkbox" checked><span class="toggle-track"></span></span></label>
+            <label><span>Check every</span><div><input id="watchdog-poll" type="number" min="5" max="300"><small>seconds</small></div></label>
+            <label><span>Restart delay</span><div><input id="watchdog-delay" type="number" min="5" max="600"><small>seconds</small></div></label>
+            <label><span>Attempt limit</span><div><input id="watchdog-attempts" type="number" min="1" max="10"><small>restarts</small></div></label>
+            <label><span>Retry window</span><div><input id="watchdog-window" type="number" min="1" max="60"><small>minutes</small></div></label>
+            <button class="button primary" id="save-watchdog">Save recovery policy</button>
+          </div>
+        </article>
+
+        <div class="activity-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">TIMELINE</p><h3>Recent activity</h3></div><button class="text-button" id="refresh-activity">Refresh</button></div>
+            <div id="activity-list" class="activity-list"></div>
+          </article>
+          <article class="panel console-panel">
+            <div class="panel-heading"><div><p class="eyebrow">STEAMCMD</p><h3>Update output</h3></div><span id="update-state-badge" class="mini-badge">Idle</span></div>
+            <pre id="update-log">No update has been run from PalSphere yet.</pre>
+          </article>
+        </div>
+
+        <article class="panel danger-zone">
+          <div><p class="eyebrow">EMERGENCY ONLY</p><h3>Force stop server</h3><p>Use only when graceful Save & Stop has failed. A force stop can lose the newest unsaved progress.</p></div>
+          <button class="button danger-outline" id="force-stop">Force stop</button>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal-backdrop" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-icon" id="modal-icon">?</div>
+      <h2 id="modal-title">Confirm action</h2>
+      <p id="modal-message"></p>
+      <div class="modal-actions"><button class="button ghost" id="modal-cancel">Cancel</button><button class="button primary" id="modal-confirm">Continue</button></div>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>

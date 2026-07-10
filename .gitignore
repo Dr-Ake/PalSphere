@@ -1,0 +1,43 @@
+# Downloaded runtimes and Palworld server files
+/.runtime/
+/_steamcmd/
+/_prerequisites/
+/server/
+
+# Live PalSphere state (may contain credentials or world metadata)
+/manager/manager-settings.json
+/manager/backups/
+/manager/config-history/
+/manager/logs/
+/PalSphere.install.json
+/PalSphere Server Info - Private.txt
+/SERVER INFO - KEEP PRIVATE.txt
+
+# Palworld saves and generated configuration must never be committed
+*.sav
+**/SaveGames/
+**/Saved/
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs, caches, archives, and editor files
+*.log
+*.tmp
+*.bak
+*.zip
+*.7z
+coverage/
+node_modules/
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+
+# Local release staging
+/_release/

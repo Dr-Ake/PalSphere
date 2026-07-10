@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">PalSphere</title>
+  <desc id="desc">A glowing Pal sphere with mountain ears</desc>
+  <defs>
+    <radialGradient id="shell" cx="35%" cy="25%" r="80%">
+      <stop offset="0" stop-color="#27486b"/>
+      <stop offset="0.55" stop-color="#13273f"/>
+      <stop offset="1" stop-color="#09111f"/>
+    </radialGradient>
+    <linearGradient id="mint" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#7cf7d4"/>
+      <stop offset="1" stop-color="#2acbb8"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#c6a8ff"/>
+      <stop offset="1" stop-color="#7d63e8"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <path d="M41 47 27 17l31 18M119 47l14-30-31 18" fill="url(#violet)" stroke="#9b84f7" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="80" cy="84" r="60" fill="url(#shell)" stroke="#36506f" stroke-width="5"/>
+  <path d="M22 84h116" stroke="url(#mint)" stroke-width="9"/>
+  <path d="M31 79c17-12 28-6 39-15 9-8 16-27 31-25 10 2 14 15 28 24" fill="none" stroke="#98ffe2" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+  <circle cx="80" cy="84" r="21" fill="#0c1626" stroke="url(#mint)" stroke-width="7" filter="url(#glow)"/>
+  <circle cx="80" cy="84" r="8" fill="#d9fff4"/>
+  <path d="M59 119c14 9 29 9 43 0" fill="none" stroke="#536f91" stroke-width="4" stroke-linecap="round"/>
+</svg>

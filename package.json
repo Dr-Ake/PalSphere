@@ -1,0 +1,14 @@
+{
+  "name": "palsphere-server-studio",
+  "version": "1.2.1",
+  "private": true,
+  "description": "A local Windows control panel and safe installer for Palworld Dedicated Server.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test manager/tests/*.test.js",
+    "check": "node --check manager/server-manager.js && node --check manager/public/app.js && node --check manager/lib/watchdog.js"
+  }
+}
