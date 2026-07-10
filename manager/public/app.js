@@ -2,6 +2,17 @@
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const AUTO_REFRESH_INTERVAL_MS = 2500;
+const AUTO_REFRESH_STORAGE_KEY = 'palsphere:auto-refresh';
+
+function loadAutoRefreshPreference() {
+  try {
+    const stored = localStorage.getItem(AUTO_REFRESH_STORAGE_KEY);
+    return stored === null ? false : stored === 'true';
+  } catch {
+    return false;
+  }
+}
 
 const state = {
   page: 'dashboard',
@@ -15,6 +26,8 @@ const state = {
   managerSettings: null,
   busy: new Set(),
   lastServerState: null,
+  autoRefresh: loadAutoRefreshPreference(),
+  statusRefreshTimer: null,
 };
 
 const pageMeta = {
@@ -273,6 +286,37 @@ async function refreshStatus({ quiet = true } = {}) {
     state.lastServerState = state.status.state;
   } catch (error) {
     if (!quiet) toast('Could not refresh status', error.message, 'error');
+  }
+}
+
+function setAutoRefresh(enabled, { persist = true, refreshNow = false } = {}) {
+  state.autoRefresh = Boolean(enabled);
+  $('#auto-refresh').checked = state.autoRefresh;
+  if (state.statusRefreshTimer) {
+    clearInterval(state.statusRefreshTimer);
+    state.statusRefreshTimer = null;
+  }
+  if (state.autoRefresh) {
+    if (refreshNow) refreshStatus();
+    state.statusRefreshTimer = setInterval(() => refreshStatus(), AUTO_REFRESH_INTERVAL_MS);
+  }
+  if (persist) {
+    try { localStorage.setItem(AUTO_REFRESH_STORAGE_KEY, String(state.autoRefresh)); } catch { /* preference storage unavailable */ }
+  }
+}
+
+async function handleStatusRefresh() {
+  const button = $('#refresh-status');
+  if (button.disabled) return;
+  button.disabled = true;
+  button.classList.add('is-refreshing');
+  button.setAttribute('aria-busy', 'true');
+  try {
+    await refreshStatus({ quiet: false });
+  } finally {
+    button.disabled = false;
+    button.classList.remove('is-refreshing');
+    button.removeAttribute('aria-busy');
   }
 }
 
@@ -667,6 +711,8 @@ function wireEvents() {
   $('#save-watchdog').addEventListener('click', saveWatchdogSettings);
   $('#startup-enabled').addEventListener('change', handleStartupToggle);
   $('#force-stop').addEventListener('click', handleForceStop);
+  $('#refresh-status').addEventListener('click', handleStatusRefresh);
+  $('#auto-refresh').addEventListener('change', (event) => setAutoRefresh(event.target.checked, { refreshNow: event.target.checked }));
   $('#refresh-activity').addEventListener('click', refreshActivity);
   $('#launch-palworld').addEventListener('click', () => api('/api/open-game', { method: 'POST' }).then(() => toast('Launching Palworld', 'Steam should open the game.')).catch((error) => toast('Could not launch game', error.message, 'error')));
   $('#copy-lan-address').addEventListener('click', () => copyText(`${state.status.lanIp}:${state.status.port}`, 'LAN address'));
@@ -698,7 +744,7 @@ async function initialize() {
     $('#app').classList.remove('is-loading');
     $('#loading-screen').classList.add('done');
     setTimeout(() => $('#loading-screen').remove(), 500);
-    setInterval(() => refreshStatus(), 2500);
+    setAutoRefresh(state.autoRefresh, { persist: false });
     setInterval(() => { if (state.page === 'activity') refreshActivity(); }, 5000);
   } catch (error) {
     $('.loading-copy strong').textContent = 'PalSphere could not connect';

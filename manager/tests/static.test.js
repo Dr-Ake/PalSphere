@@ -36,3 +36,14 @@ test('crash recovery controls and status surfaces are wired into the UI', () => 
   assert.match(app, /saveWatchdogSettings/);
   assert.match(app, /status\.watchdog/);
 });
+
+test('status refresh can be manual or automatically repeated by preference', () => {
+  const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
+  for (const id of ['refresh-status', 'auto-refresh']) assert.match(html, new RegExp(`id="${id}"`));
+  assert.doesNotMatch(html, /id="auto-refresh"[^>]*checked/);
+  assert.match(app, /handleStatusRefresh/);
+  assert.match(app, /setAutoRefresh/);
+  assert.match(app, /palsphere:auto-refresh/);
+  assert.doesNotMatch(app, /setInterval\(\(\) => refreshStatus\(\), 2500\)/);
+});

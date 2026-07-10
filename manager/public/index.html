@@ -67,6 +67,19 @@
           <h1 id="page-title">Dashboard</h1>
         </div>
         <div class="top-actions">
+          <div class="refresh-controls" aria-label="Status refresh controls">
+            <button class="button ghost refresh-button" id="refresh-status" type="button" title="Refresh server status now">
+              <span class="refresh-icon" aria-hidden="true">&#8635;</span>
+              <span>Refresh</span>
+            </button>
+            <div class="auto-refresh-control" title="Check server status every 2.5 seconds">
+              <span id="auto-refresh-label">Auto</span>
+              <label class="toggle">
+                <input id="auto-refresh" type="checkbox" aria-labelledby="auto-refresh-label">
+                <span class="toggle-track" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
           <div id="global-status" class="status-pill offline">
             <span class="status-dot"></span>
             <span class="status-label">Offline</span>
