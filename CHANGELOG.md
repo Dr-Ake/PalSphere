@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0 - 2026-07-10
+
+- Made the settings search, preset, discard, and save toolbar stay visible beneath the header while scrolling.
+
 ## 1.5.0 - 2026-07-10
 
 - Replaced generic filler with plain-English descriptions for all 119 installed Palworld settings.

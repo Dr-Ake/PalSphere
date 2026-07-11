@@ -185,7 +185,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .lock-banner > span { font-size: 18px; }
 .lock-banner strong { font-size: 12px; color: #ffe2aa; }
 .lock-banner p { margin: 2px 0 0; color: var(--muted); font-size: 10px; }
-.settings-toolbar { min-height: 58px; display: flex; gap: 9px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 15px; background: var(--panel); }
+.settings-toolbar { min-height: 58px; display: flex; gap: 9px; align-items: center; position: sticky; top: 82px; z-index: 19; padding: 10px; border: 1px solid var(--line); border-radius: 15px; background: rgba(13,25,42,.96); box-shadow: 0 14px 34px rgba(2,6,11,.28); backdrop-filter: blur(16px); }
 .search-box { flex: 1; max-width: 480px; height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(4,9,17,.45); color: var(--subtle); }
 .search-box input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 11px; }
 .search-box input::placeholder { color: var(--subtle); }

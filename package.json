@@ -1,6 +1,6 @@
 {
   "name": "palsphere-server-studio",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "description": "A local Windows control panel and safe installer for Palworld Dedicated Server.",
   "license": "MIT",

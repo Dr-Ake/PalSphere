@@ -69,3 +69,10 @@ test('join message editor displays a fixed PalSphere signature', () => {
   assert.match(styles, /\.branded-text-wrap/);
   assert.match(styles, /\.brand-suffix/);
 });
+
+test('settings actions remain sticky beneath the main header while scrolling', () => {
+  const styles = fs.readFileSync(path.join(publicDir, 'styles.css'), 'utf8');
+  assert.match(styles, /\.settings-toolbar\s*\{[^}]*position:\s*sticky/);
+  assert.match(styles, /\.settings-toolbar\s*\{[^}]*top:\s*82px/);
+  assert.match(styles, /\.settings-toolbar\s*\{[^}]*z-index:\s*19/);
+});
