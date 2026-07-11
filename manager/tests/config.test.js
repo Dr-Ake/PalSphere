@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 const { buildConfig, coerceValue, parseConfig, splitTopLevel } = require('../lib/config');
-const { buildSchema, makeLabel } = require('../lib/schema');
+const { DESCRIPTIONS, buildSchema, makeLabel } = require('../lib/schema');
 
 const root = path.resolve(__dirname, '..', '..');
 const defaultText = fs.readFileSync(path.join(__dirname, 'fixtures', 'DefaultPalWorldSettings.ini'), 'utf8');
@@ -41,6 +41,15 @@ test('validates the complete installed Palworld configuration when available', {
   assert.ok(installed.entries.length >= 100);
   assert.equal(new Set(installed.entries.map((entry) => entry.key)).size, installed.entries.length);
   assert.equal(installed.values.PublicPort, 8211);
+  assert.deepEqual(installed.entries.map((entry) => entry.key).filter((key) => !DESCRIPTIONS[key]), []);
+});
+
+test('every installed setting has a useful specific description', () => {
+  assert.equal(Object.keys(DESCRIPTIONS).length, 119);
+  for (const [key, description] of Object.entries(DESCRIPTIONS)) {
+    assert.ok(description.length >= 45, `${key} needs a more useful description`);
+    assert.doesNotMatch(description, /^Palworld server setting:/);
+  }
 });
 
 test('round-trips all settings and escaped string values', () => {
@@ -63,7 +72,7 @@ test('validates numeric bounds and friendly labels', () => {
   const field = { type: 'number', integer: true, min: 1, max: 65535, label: 'Public port' };
   assert.equal(coerceValue('8211', field), 8211);
   assert.throws(() => coerceValue('70000', field), /at most 65535/);
-  assert.equal(makeLabel('bEnablePlayerToPlayerDamage'), 'Enable Player To Player Damage');
+  assert.equal(makeLabel('bEnablePlayerToPlayerDamage'), 'Player-to-player damage');
 });
 
 test('presents the server description as a branded join message', () => {

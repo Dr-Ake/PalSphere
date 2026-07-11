@@ -15,6 +15,7 @@ PalSphere does **not** redistribute Palworld, SteamCMD, Node.js, DirectX, or Mic
 - Optional Palworld Community Servers listing with a persistent dashboard toggle
 - Customizable player join message with a fixed `Hosted by PalSphere` signature
 - Editing for every setting supplied by the installed Palworld server
+- Plain-English guidance for every installed setting, including units, dependencies, and performance cautions
 - Graceful save, shutdown, update, backup, and restore controls
 - Palworld rolling backups plus 12 portable world snapshots
 - Bounded crash recovery with restart-loop protection

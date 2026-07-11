@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 - 2026-07-10
+
+- Replaced generic filler with plain-English descriptions for all 119 installed Palworld settings.
+- Added direction, units, dependencies, performance warnings, and honest notices for undocumented internal options.
+- Improved labels for cryptic legacy, networking, PvP, backup, and player-limit settings.
+
 ## 1.4.0 - 2026-07-10
 
 - Turned `ServerDescription` into a clear Join message editor.

@@ -36,7 +36,7 @@ const HOST = process.env.PAL_MANAGER_HOST || '127.0.0.1';
 const PORT = Number(process.env.PAL_MANAGER_PORT || 8219);
 const PUBLIC_IP_LOOKUP_URL = process.env.PAL_PUBLIC_IP_LOOKUP_URL || 'https://api.ipify.org?format=json';
 const TEST_MODE = process.env.PAL_MANAGER_TEST_MODE === '1';
-const MANAGER_VERSION = '1.4.0';
+const MANAGER_VERSION = '1.5.0';
 const AUTOSTART_TASK_NAME = 'PalSphere Server Studio';
 
 for (const directory of [BACKUPS_PATH, CONFIG_HISTORY_PATH, LOGS_PATH]) {

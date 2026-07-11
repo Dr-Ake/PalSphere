@@ -1,6 +1,7 @@
 'use strict';
 
 const { SERVER_DESCRIPTION_SUFFIX, SERVER_DESCRIPTION_SUFFIXES } = require('./branding');
+const { DESCRIPTIONS, LABEL_OVERRIDES } = require('./descriptions');
 
 const GROUPS = [
   { id: 'identity', label: 'Identity & Access', icon: 'sparkles', description: 'Name, passwords, players, and platforms.' },
@@ -56,40 +57,10 @@ const LIMITS = {
   ServerReplicatePawnCullDistance: { min: 5000, max: 15000 },
 };
 
-const DESCRIPTIONS = {
-  ServerName: 'The name friends see when they connect.',
-  ServerDescription: 'Message players see when joining. PalSphere adds its fixed hosting signature after your text.',
-  ServerPassword: 'Password friends must enter to join.',
-  AdminPassword: 'Private password for administrator commands and local manager controls.',
-  ServerPlayerMaxNum: 'Maximum concurrent players. Palworld supports up to 32.',
-  CrossplayPlatforms: 'Platforms allowed to join this server.',
-  AutoSaveSpan: 'Seconds between world autosaves. Lower values save more often and use more disk I/O.',
-  bIsUseBackupSaveData: 'Keep Palworld’s built-in rolling world backups.',
-  RESTAPIEnabled: 'Required for the manager’s Save Now and graceful shutdown buttons. Keep its port off your router.',
-  RESTAPIPort: 'Local management API port. Do not port-forward it.',
-  PublicPort: 'Public listing port; the listening port is set by the manager launch command.',
-  RCONEnabled: 'Remote console access. Leave off unless you specifically use an RCON client.',
-  PalSpawnNumRate: 'Pal population multiplier. Higher values increase server load.',
-  BaseCampWorkerMaxNum: 'Maximum Pals working at each base; high values increase server load.',
-  BaseCampMaxNumInGuild: 'Maximum bases per guild (Palworld maximum: 10).',
-  DeathPenalty: 'What a player drops when defeated.',
-  bHardcore: 'Hardcore mode prevents respawning after death.',
-  bPalLost: 'Permanently lose carried Pals on death.',
-  DenyTechnologyList: 'Comma-separated technology IDs to disable.',
-  bAllowClientMod: 'Allow clients with mods enabled to join.',
-  bAllowGlobalPalboxImport: 'Allow importing Pals from the Global Palbox.',
-  bAllowGlobalPalboxExport: 'Allow exporting Pals to the Global Palbox.',
-  ServerReplicatePawnCullDistance: 'Pal synchronization distance in centimeters (5,000–15,000).',
-};
-
 const ACRONYMS = new Map([
   ['Hp', 'HP'], ['Pvp', 'PvP'], ['Rcon', 'RCON'], ['Restapi', 'REST API'],
   ['Ip', 'IP'], ['Id', 'ID'], ['Unko', 'UNKO'], ['Uid', 'UID'], ['Fx', 'FX'],
 ]);
-
-const LABEL_OVERRIDES = {
-  ServerDescription: 'Join message',
-};
 
 function makeLabel(key) {
   if (LABEL_OVERRIDES[key]) return LABEL_OVERRIDES[key];
@@ -145,4 +116,4 @@ function buildSchema(defaultEntries, liveEntries = []) {
   });
 }
 
-module.exports = { GROUPS, buildSchema, groupForKey, makeLabel };
+module.exports = { DESCRIPTIONS, GROUPS, buildSchema, groupForKey, makeLabel };
