@@ -49,3 +49,14 @@ test('status refresh can be manual or automatically repeated by preference', () 
   assert.match(app, /syncTransitionRefresh/);
   assert.doesNotMatch(app, /setInterval\(\(\) => refreshStatus\(\), 2500\)/);
 });
+
+test('Palworld community listing toggle is wired to persistent manager settings', () => {
+  const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
+  for (const id of ['community-listing-enabled', 'community-listing-state', 'community-listing-detail']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /handleCommunityListingToggle/);
+  assert.match(app, /publicLobby/);
+  assert.match(app, /Direct IP only/);
+});

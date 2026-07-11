@@ -1,4 +1,5 @@
 {
+  "publicLobby": false,
   "watchdog": {
     "enabled": true,
     "pollIntervalSeconds": 15,

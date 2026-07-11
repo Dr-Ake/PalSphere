@@ -8,6 +8,7 @@ const path = require('path');
 const { execFile, spawn } = require('child_process');
 const { promisify } = require('util');
 const { buildConfig, parseConfig } = require('./lib/config');
+const { buildLaunchArguments } = require('./lib/launch');
 const { resolveLanIp } = require('./lib/network');
 const { GROUPS, buildSchema } = require('./lib/schema');
 const { CrashWatchdog, normalizeWatchdogSettings } = require('./lib/watchdog');
@@ -34,7 +35,7 @@ const HOST = process.env.PAL_MANAGER_HOST || '127.0.0.1';
 const PORT = Number(process.env.PAL_MANAGER_PORT || 8219);
 const PUBLIC_IP_LOOKUP_URL = process.env.PAL_PUBLIC_IP_LOOKUP_URL || 'https://api.ipify.org?format=json';
 const TEST_MODE = process.env.PAL_MANAGER_TEST_MODE === '1';
-const MANAGER_VERSION = '1.2.1';
+const MANAGER_VERSION = '1.3.0';
 const AUTOSTART_TASK_NAME = 'PalSphere Server Studio';
 
 for (const directory of [BACKUPS_PATH, CONFIG_HISTORY_PATH, LOGS_PATH]) {
@@ -63,8 +64,10 @@ function writeJsonFile(filePath, value) {
   fs.renameSync(temp, filePath);
 }
 
+const storedManagerSettings = readJsonFile(MANAGER_SETTINGS_PATH, {});
 let managerSettings = {
-  watchdog: normalizeWatchdogSettings(readJsonFile(MANAGER_SETTINGS_PATH, {}).watchdog),
+  publicLobby: storedManagerSettings.publicLobby === true,
+  watchdog: normalizeWatchdogSettings(storedManagerSettings.watchdog),
 };
 
 function persistManagerSettings() {
@@ -378,6 +381,7 @@ async function buildStatus() {
     lanIp: await getLanIp(),
     publicIp: publicIpCache,
     port: Number(values.PublicPort || 8211),
+    publicLobby: managerSettings.publicLobby,
     builtInBackupCount: builtInBackups.count,
     latestBuiltInBackup: builtInBackups.latest,
     latestBuiltInBackupAt: builtInBackups.latestAt,
@@ -415,11 +419,7 @@ async function assertServerCanStart() {
 
 async function launchServer(source = 'manual') {
   const values = await assertServerCanStart();
-  const args = [
-    `-port=${Number(values.PublicPort || 8211)}`,
-    `-players=${Number(values.ServerPlayerMaxNum || 32)}`,
-    `-logformat=${values.LogFormatType || 'Text'}`,
-  ];
+  const args = buildLaunchArguments(values, managerSettings);
   const child = spawn(PALSERVER_PATH, args, {
     cwd: SERVER_DIR,
     detached: true,
@@ -507,13 +507,16 @@ function saveSettings(requestValues) {
 }
 
 function saveManagerControlSettings(requestValues) {
+  const publicLobby = Object.hasOwn(requestValues, 'publicLobby') ? requestValues.publicLobby : managerSettings.publicLobby;
+  if (typeof publicLobby !== 'boolean') throw new Error('Community server listing must be enabled or disabled.');
   managerSettings = {
     ...managerSettings,
+    publicLobby,
     watchdog: normalizeWatchdogSettings(requestValues.watchdog || managerSettings.watchdog),
   };
   persistManagerSettings();
   watchdog.updateSettings(managerSettings.watchdog);
-  logEvent('settings', 'PalSphere recovery settings saved.', { watchdog: managerSettings.watchdog });
+  logEvent('settings', 'PalSphere launch and recovery settings saved.', { publicLobby: managerSettings.publicLobby, watchdog: managerSettings.watchdog });
   return managerSettings;
 }
 
@@ -635,6 +638,9 @@ async function handleApi(request, response, pathname) {
   }
   if (request.method === 'POST' && pathname === '/api/manager/settings') {
     const body = await readJsonBody(request);
+    if (Object.hasOwn(body, 'publicLobby') && await isServerRunning()) {
+      return sendJson(response, 409, { error: 'Stop the server before changing its Palworld community listing.' });
+    }
     return sendJson(response, 200, saveManagerControlSettings(body));
   }
   if (request.method === 'POST' && pathname === '/api/manager/startup') {

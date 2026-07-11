@@ -193,6 +193,7 @@ function updateActionStates() {
   $('#create-backup').disabled = blocked || running;
   if ($('#save-watchdog')) $('#save-watchdog').disabled = state.busy.has('watchdog');
   if ($('#startup-enabled')) $('#startup-enabled').disabled = state.busy.has('startup');
+  if ($('#community-listing-enabled')) $('#community-listing-enabled').disabled = blocked || running || state.busy.has('community-listing');
   $('#settings-lock').hidden = !running && !state.status.updating;
   renderDirtyState();
 }
@@ -236,7 +237,18 @@ function renderStatus() {
   $('#check-router').textContent = `UDP ${status.port} → ${status.lanIp}`;
   renderWatchdogStatus();
   renderStartupStatus();
+  renderCommunityListing();
   updateActionStates();
+}
+
+function renderCommunityListing() {
+  if (!state.managerSettings || !$('#community-listing-enabled')) return;
+  const enabled = Boolean(state.managerSettings.publicLobby);
+  if (!state.busy.has('community-listing')) $('#community-listing-enabled').checked = enabled;
+  $('#community-listing-state').textContent = enabled ? 'Community list' : 'Direct IP only';
+  $('#community-listing-detail').textContent = state.status?.running
+    ? (enabled ? 'Listed for this server session' : 'Stop the server to change visibility')
+    : (enabled ? 'Will be listed the next time the server starts' : 'Friends join with the address above');
 }
 
 function renderStartupStatus() {
@@ -728,6 +740,25 @@ async function handleStartupToggle() {
   }
 }
 
+async function handleCommunityListingToggle() {
+  const input = $('#community-listing-enabled');
+  const requested = input.checked;
+  try {
+    await withBusy('community-listing', async () => {
+      state.managerSettings = await api('/api/manager/settings', { method: 'POST', body: { publicLobby: requested } });
+      renderCommunityListing();
+      await refreshStatus();
+      await refreshActivity();
+      toast(requested ? 'Community listing enabled' : 'Community listing disabled', requested
+        ? 'The next server launch will appear in Palworld\'s Community Servers list.'
+        : 'The next server launch will accept direct-IP connections without being listed.');
+    });
+  } catch {
+    input.checked = !requested;
+    renderCommunityListing();
+  }
+}
+
 async function handleForceStop() {
   const confirmed = await confirmAction({ title: 'Force stop Palworld?', message: 'This bypasses the normal save and shutdown process. Use it only when Save & Stop has failed and the server is frozen.', confirmText: 'Force stop', danger: true, icon: '!' });
   if (!confirmed) return;
@@ -752,6 +783,7 @@ function wireEvents() {
   $('#update-server').addEventListener('click', handleUpdate);
   $('#save-watchdog').addEventListener('click', saveWatchdogSettings);
   $('#startup-enabled').addEventListener('change', handleStartupToggle);
+  $('#community-listing-enabled').addEventListener('change', handleCommunityListingToggle);
   $('#force-stop').addEventListener('click', handleForceStop);
   $('#refresh-status').addEventListener('click', handleStatusRefresh);
   $('#auto-refresh').addEventListener('change', (event) => setAutoRefresh(event.target.checked, { refreshNow: event.target.checked }));
@@ -781,7 +813,7 @@ async function initialize() {
       api('/api/settings'), api('/api/status'), api('/api/backups'), api('/api/activity'), api('/api/manager/settings'),
     ]);
     state.baseline = deepClone(state.bundle.values);
-    renderStatus(); renderSettings(); renderBackups(); renderActivity(); renderWatchdogPolicy();
+    renderStatus(); renderSettings(); renderBackups(); renderActivity(); renderWatchdogPolicy(); renderCommunityListing();
     if (!state.status.publicIp) api('/api/network/refresh', { method: 'POST' }).then(() => refreshStatus()).catch(() => {});
     $('#app').classList.remove('is-loading');
     $('#loading-screen').classList.add('done');

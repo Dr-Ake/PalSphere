@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0 - 2026-07-10
+
+- Added a persistent dashboard toggle for showing the server in Palworld's Community Servers list.
+- Community listing uses Palworld's official `-publiclobby` launch option and never hardcodes a public IP.
+
 ## 1.2.1 - 2026-07-10
 
 - Added a live dashboard toggle for enabling or disabling Windows sign-in startup.

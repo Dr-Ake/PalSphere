@@ -12,6 +12,7 @@ PalSphere does **not** redistribute Palworld, SteamCMD, Node.js, DirectX, or Mic
 - Microsoft Visual C++ and DirectX runtime installation
 - Program-scoped Windows Firewall rule that follows the configured game UDP port
 - Local-only browser dashboard on `127.0.0.1:8219`
+- Optional Palworld Community Servers listing with a persistent dashboard toggle
 - Editing for every setting supplied by the installed Palworld server
 - Graceful save, shutdown, update, backup, and restore controls
 - Palworld rolling backups plus 12 portable world snapshots
@@ -63,6 +64,8 @@ In the router:
 3. Do not forward the TCP version of the game port, the REST API port, the manager port, or the RCON port.
 
 Friends connect using the public address shown on the PalSphere dashboard. Players on the same home network use the LAN address.
+
+The **Palworld server list** toggle on the dashboard controls whether the next server launch appears under Palworld's **Community Servers** list. Leave it off for direct-IP-only access. Turn it on while the server is stopped to add Palworld's official `-publiclobby` launch option; no public IP is hardcoded. A join password remains strongly recommended for listed servers.
 
 ## Crash recovery
 

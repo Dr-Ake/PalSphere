@@ -127,6 +127,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .address-chip .chip-label { grid-column: 1 / -1; color: var(--subtle); font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
 .address-chip strong { margin-top: 2px; color: #dcfff6; font-size: 13px; }
 .copy-mark { color: var(--mint); font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.community-listing-row { max-width: 450px; min-height: 48px; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.02); }
+.community-listing-row > span:first-child { display: grid; gap: 2px; }
+.community-listing-row strong { color: #e8f3fb; font-size: 10px; }
+.community-listing-row small { color: var(--subtle); font-size: 8px; }
+.community-listing-action { display: flex; align-items: center; gap: 9px; }
+.community-listing-action > small { min-width: 78px; text-align: right; color: var(--mint); font-weight: 800; text-transform: uppercase; letter-spacing: .4px; }
 .hero-actions { display: flex; gap: 9px; margin-top: 24px; }
 .hero-visual { position: relative; min-width: 310px; display: grid; place-content: center; overflow: hidden; }
 .hero-visual::after { content: ""; position: absolute; width: 180px; height: 34px; bottom: 48px; border-radius: 50%; background: rgba(0,0,0,.38); filter: blur(14px); }
