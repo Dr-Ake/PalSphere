@@ -387,6 +387,31 @@ function buildControl(field) {
   const disabled = Boolean(state.status?.running || state.status?.updating);
   const value = state.bundle.values[field.key];
 
+  if (field.type === 'brandedtext') {
+    const row = document.createElement('div');
+    row.className = 'branded-text-wrap';
+    const input = document.createElement('input');
+    input.className = 'setting-input';
+    input.type = 'text';
+    input.disabled = disabled;
+    input.placeholder = 'Describe your server for joining players';
+    let customMessage = String(value ?? '').trim();
+    const suffixes = [...new Set([field.suffix, ...(field.legacySuffixes || [])])];
+    const matchedSuffix = suffixes.find((suffix) => customMessage.toLowerCase().endsWith(String(suffix).toLowerCase()));
+    if (matchedSuffix) customMessage = customMessage.slice(0, -matchedSuffix.length).replace(/\s*[|•—–-]\s*$/, '').trim();
+    input.value = customMessage;
+    const signature = document.createElement('span');
+    signature.className = 'brand-suffix';
+    signature.textContent = `• ${field.suffix}`;
+    input.addEventListener('input', () => {
+      const message = input.value.trim();
+      markSetting(field.key, message ? `${message} • ${field.suffix}` : field.suffix);
+    });
+    row.append(input, signature);
+    wrapper.append(row);
+    return wrapper;
+  }
+
   if (field.type === 'toggle') {
     const line = document.createElement('div');
     line.className = 'toggle-wrap';
@@ -531,6 +556,7 @@ function renderSettings() {
   for (const field of fields) {
     const card = document.createElement('article');
     card.className = `setting-card ${!sameValue(state.bundle.values[field.key], state.baseline[field.key]) ? 'changed' : ''}`;
+    if (field.type === 'brandedtext') card.classList.add('branded-setting');
     card.dataset.settingCard = field.key;
     const info = document.createElement('div');
     info.className = 'setting-info';

@@ -60,3 +60,12 @@ test('Palworld community listing toggle is wired to persistent manager settings'
   assert.match(app, /publicLobby/);
   assert.match(app, /Direct IP only/);
 });
+
+test('join message editor displays a fixed PalSphere signature', () => {
+  const app = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(publicDir, 'styles.css'), 'utf8');
+  assert.match(app, /field\.type === 'brandedtext'/);
+  assert.match(app, /brand-suffix/);
+  assert.match(styles, /\.branded-text-wrap/);
+  assert.match(styles, /\.brand-suffix/);
+});

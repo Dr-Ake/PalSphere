@@ -65,3 +65,12 @@ test('validates numeric bounds and friendly labels', () => {
   assert.throws(() => coerceValue('70000', field), /at most 65535/);
   assert.equal(makeLabel('bEnablePlayerToPlayerDamage'), 'Enable Player To Player Damage');
 });
+
+test('presents the server description as a branded join message', () => {
+  const parsed = parseConfig(defaultText);
+  const schema = buildSchema(parsed.entries, parsed.entries);
+  const field = schema.find((candidate) => candidate.key === 'ServerDescription');
+  assert.equal(field.label, 'Join message');
+  assert.equal(field.type, 'brandedtext');
+  assert.equal(field.suffix, 'Hosted by PalSphere');
+});

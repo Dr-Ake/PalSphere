@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0 - 2026-07-10
+
+- Turned `ServerDescription` into a clear Join message editor.
+- Added a fixed `Hosted by PalSphere` signature while keeping the owner-written message customizable.
+
 ## 1.3.0 - 2026-07-10
 
 - Added a persistent dashboard toggle for showing the server in Palworld's Community Servers list.

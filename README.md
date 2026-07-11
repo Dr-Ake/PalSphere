@@ -13,6 +13,7 @@ PalSphere does **not** redistribute Palworld, SteamCMD, Node.js, DirectX, or Mic
 - Program-scoped Windows Firewall rule that follows the configured game UDP port
 - Local-only browser dashboard on `127.0.0.1:8219`
 - Optional Palworld Community Servers listing with a persistent dashboard toggle
+- Customizable player join message with a fixed `Hosted by PalSphere` signature
 - Editing for every setting supplied by the installed Palworld server
 - Graceful save, shutdown, update, backup, and restore controls
 - Palworld rolling backups plus 12 portable world snapshots

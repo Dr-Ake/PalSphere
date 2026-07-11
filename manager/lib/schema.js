@@ -1,5 +1,7 @@
 'use strict';
 
+const { SERVER_DESCRIPTION_SUFFIX, SERVER_DESCRIPTION_SUFFIXES } = require('./branding');
+
 const GROUPS = [
   { id: 'identity', label: 'Identity & Access', icon: 'sparkles', description: 'Name, passwords, players, and platforms.' },
   { id: 'world', label: 'World & Progression', icon: 'globe', description: 'Time, experience, drops, and world randomization.' },
@@ -27,7 +29,7 @@ const TYPE_OVERRIDES = {
   AdminPassword: { type: 'password', secret: true },
   ServerPassword: { type: 'password', secret: true },
   ServerName: { type: 'text' },
-  ServerDescription: { type: 'text' },
+  ServerDescription: { type: 'brandedtext', suffix: SERVER_DESCRIPTION_SUFFIX, legacySuffixes: SERVER_DESCRIPTION_SUFFIXES },
   Region: { type: 'text' },
   PublicIP: { type: 'text' },
   BanListURL: { type: 'text' },
@@ -56,7 +58,7 @@ const LIMITS = {
 
 const DESCRIPTIONS = {
   ServerName: 'The name friends see when they connect.',
-  ServerDescription: 'A short description for this world.',
+  ServerDescription: 'Message players see when joining. PalSphere adds its fixed hosting signature after your text.',
   ServerPassword: 'Password friends must enter to join.',
   AdminPassword: 'Private password for administrator commands and local manager controls.',
   ServerPlayerMaxNum: 'Maximum concurrent players. Palworld supports up to 32.',
@@ -85,7 +87,12 @@ const ACRONYMS = new Map([
   ['Ip', 'IP'], ['Id', 'ID'], ['Unko', 'UNKO'], ['Uid', 'UID'], ['Fx', 'FX'],
 ]);
 
+const LABEL_OVERRIDES = {
+  ServerDescription: 'Join message',
+};
+
 function makeLabel(key) {
+  if (LABEL_OVERRIDES[key]) return LABEL_OVERRIDES[key];
   let label = key
     .replace(/^b(?=[A-Z])/, '')
     .replace(/_/g, ' ')

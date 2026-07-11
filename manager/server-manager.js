@@ -7,6 +7,7 @@ const net = require('net');
 const path = require('path');
 const { execFile, spawn } = require('child_process');
 const { promisify } = require('util');
+const { brandServerDescription } = require('./lib/branding');
 const { buildConfig, parseConfig } = require('./lib/config');
 const { buildLaunchArguments } = require('./lib/launch');
 const { resolveLanIp } = require('./lib/network');
@@ -35,7 +36,7 @@ const HOST = process.env.PAL_MANAGER_HOST || '127.0.0.1';
 const PORT = Number(process.env.PAL_MANAGER_PORT || 8219);
 const PUBLIC_IP_LOOKUP_URL = process.env.PAL_PUBLIC_IP_LOOKUP_URL || 'https://api.ipify.org?format=json';
 const TEST_MODE = process.env.PAL_MANAGER_TEST_MODE === '1';
-const MANAGER_VERSION = '1.3.0';
+const MANAGER_VERSION = '1.4.0';
 const AUTOSTART_TASK_NAME = 'PalSphere Server Studio';
 
 for (const directory of [BACKUPS_PATH, CONFIG_HISTORY_PATH, LOGS_PATH]) {
@@ -495,6 +496,7 @@ watchdog = new CrashWatchdog({
 function saveSettings(requestValues) {
   const bundle = readConfigBundle();
   const values = { ...bundle.values, ...requestValues };
+  values.ServerDescription = brandServerDescription(values.ServerDescription);
   const content = buildConfig(values, bundle.schema, bundle.order);
   const historyName = `PalWorldSettings-${timestamp()}.ini`;
   fs.copyFileSync(CONFIG_PATH, path.join(CONFIG_HISTORY_PATH, historyName));

@@ -60,6 +60,11 @@ test('network setup follows runtime addresses and the configured game port', () 
   assert.doesNotMatch(manager, /64\.188\.248\.97|192\.168\.0\./);
 });
 
+test('fresh installs include the PalSphere hosting signature in the join message', () => {
+  const initializer = fs.readFileSync(path.join(root, 'scripts', 'Initialize-PalSphereConfig.js'), 'utf8');
+  assert.match(initializer, /ServerDescription: 'A friendly Palworld server • Hosted by PalSphere'/);
+});
+
 test('launcher identifies its own manager and cleans up an orphan after the install folder moves', () => {
   const manager = fs.readFileSync(path.join(root, 'manager', 'server-manager.js'), 'utf8');
   const launcher = fs.readFileSync(path.join(root, 'manager', 'launch-manager.ps1'), 'utf8');

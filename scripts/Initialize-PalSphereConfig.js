@@ -31,7 +31,7 @@ const gamePort = Number(process.env.PALSPHERE_GAME_PORT || values.PublicPort || 
 if (!Number.isInteger(gamePort) || gamePort < 1 || gamePort > 65535) throw new Error('The game port must be an integer from 1 to 65535.');
 const managedValues = {
   ServerName: serverName,
-  ServerDescription: 'Private server managed by PalSphere Server Studio',
+  ServerDescription: 'A friendly Palworld server • Hosted by PalSphere',
   ServerPassword: serverPassword,
   AdminPassword: adminPassword,
   PublicIP: '',
