@@ -10,6 +10,7 @@ const { promisify } = require('util');
 const { brandServerDescription } = require('./lib/branding');
 const { buildConfig, parseConfig } = require('./lib/config');
 const { buildLaunchArguments } = require('./lib/launch');
+const { MAX_ARCHIVE_BYTES, ModManager, parseWorkshopId } = require('./lib/mods');
 const { resolveLanIp } = require('./lib/network');
 const { GROUPS, buildSchema } = require('./lib/schema');
 const { CrashWatchdog, normalizeWatchdogSettings } = require('./lib/watchdog');
@@ -35,8 +36,9 @@ const STARTUP_SCRIPT_PATH = path.join(ROOT, 'scripts', 'Register-PalSphereStartu
 const HOST = process.env.PAL_MANAGER_HOST || '127.0.0.1';
 const PORT = Number(process.env.PAL_MANAGER_PORT || 8219);
 const PUBLIC_IP_LOOKUP_URL = process.env.PAL_PUBLIC_IP_LOOKUP_URL || 'https://api.ipify.org?format=json';
+const STEAM_WORKSHOP_DETAILS_URL = 'https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/';
 const TEST_MODE = process.env.PAL_MANAGER_TEST_MODE === '1';
-const MANAGER_VERSION = '1.6.0';
+const MANAGER_VERSION = '1.8.2';
 const AUTOSTART_TASK_NAME = 'PalSphere Server Studio';
 
 for (const directory of [BACKUPS_PATH, CONFIG_HISTORY_PATH, LOGS_PATH]) {
@@ -92,6 +94,8 @@ function logEvent(type, message, details = {}) {
   return event;
 }
 
+const modManager = new ModManager({ installRoot: ROOT, serverDir: SERVER_DIR, logEvent });
+
 function readConfigBundle() {
   const defaultParsed = parseConfig(fs.readFileSync(DEFAULT_CONFIG_PATH, 'utf8'));
   const liveParsed = parseConfig(fs.readFileSync(CONFIG_PATH, 'utf8'));
@@ -122,6 +126,43 @@ async function taskExists(imageName) {
   } catch {
     return false;
   }
+}
+
+async function findSteamExecutable() {
+  const candidates = [];
+  const add = (candidate) => {
+    if (!candidate) return;
+    const resolved = path.resolve(String(candidate).replace(/^"|"$/g, ''));
+    if (!candidates.includes(resolved)) candidates.push(resolved);
+  };
+  if (process.env.STEAM_PATH) add(path.join(process.env.STEAM_PATH, 'Steam.exe'));
+  if (process.platform === 'win32') {
+    try {
+      const { stdout } = await execFileAsync('reg.exe', ['query', 'HKCU\\Software\\Valve\\Steam', '/v', 'SteamPath'], { windowsHide: true, timeout: 1500 });
+      const registered = stdout.match(/SteamPath\s+REG_SZ\s+(.+)$/im)?.[1]?.trim();
+      if (registered) add(path.join(registered, 'Steam.exe'));
+    } catch { /* Steam is not registered for this Windows user. */ }
+  }
+  add(path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Steam', 'Steam.exe'));
+  add(path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Steam', 'Steam.exe'));
+  return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+}
+
+async function openWorkshopItemInSteam(item) {
+  if (TEST_MODE) return { steamClientRunning: false, simulated: true };
+  const steamExecutable = await findSteamExecutable();
+  if (!steamExecutable) {
+    throw Object.assign(new Error('The Steam desktop client is not installed for this Windows user.'), { statusCode: 409 });
+  }
+  const child = spawn(steamExecutable, [item.steamUrl], { detached: true, stdio: 'ignore', windowsHide: false });
+  child.once('error', (error) => logEvent('error', `Steam could not be started: ${error.message}`));
+  child.unref();
+  const steamClientRunning = await waitFor(() => taskExists('steam.exe'), 8000, 250);
+  if (!steamClientRunning) {
+    throw Object.assign(new Error('Steam did not start. Open Steam, sign in, and try again.'), { statusCode: 409 });
+  }
+  logEvent('mods', `Opened ${item.title} in Steam. Click Subscribe in Steam to download it.`, { workshopId: item.workshopId });
+  return { steamClientRunning: true, simulated: false };
 }
 
 async function isServerRunning() {
@@ -190,6 +231,44 @@ function httpRequest(url, { method = 'GET', headers = {}, body, timeout = 4000 }
     if (payload !== null) request.write(payload);
     request.end();
   });
+}
+
+async function lookupWorkshopItem(value) {
+  const workshopId = parseWorkshopId(value);
+  const form = new URLSearchParams({ itemcount: '1', 'publishedfileids[0]': workshopId }).toString();
+  const result = await httpRequest(STEAM_WORKSHOP_DETAILS_URL, {
+    method: 'POST',
+    body: form,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    timeout: 12000,
+  });
+  const detail = result.json?.response?.publishedfiledetails?.[0];
+  if (!detail || Number(detail.result) !== 1) throw Object.assign(new Error('Steam could not find that Workshop item.'), { statusCode: 404 });
+  if (Number(detail.consumer_app_id) !== 1623730) throw Object.assign(new Error('That Workshop item belongs to another game, not Palworld.'), { statusCode: 400 });
+  if (detail.banned === true || Number(detail.banned) === 1) throw Object.assign(new Error('Steam has blocked that Workshop item.'), { statusCode: 400 });
+  const source = modManager.discoverSteamMods().find((candidate) => candidate.workshopId === workshopId);
+  const installedMods = modManager.installedInternal();
+  const installed = installedMods.find((candidate) => candidate.workshopId === workshopId)
+    || (source ? installedMods.find((candidate) => candidate.packageName === source.packageName) : null);
+  const packageInfo = source || installed;
+  return {
+    workshopId,
+    title: String(detail.title || `Workshop item ${workshopId}`),
+    fileBytes: Number(detail.file_size || 0),
+    updatedAt: Number(detail.time_updated) ? new Date(Number(detail.time_updated) * 1000).toISOString() : null,
+    pageUrl: `https://steamcommunity.com/sharedfiles/filedetails/?id=${workshopId}`,
+    steamUrl: `steam://url/CommunityFilePage/${workshopId}`,
+    downloaded: Boolean(packageInfo),
+    sourceId: source?.sourceId || null,
+    installed: Boolean(installed),
+    installedVersion: installed?.version || null,
+    serverCompatible: packageInfo?.serverCompatible ?? null,
+    packageName: packageInfo?.packageName || null,
+    version: packageInfo?.version || null,
+  };
 }
 
 function getRestContext() {
@@ -599,6 +678,42 @@ function readJsonBody(request, maxBytes = 2 * 1024 * 1024) {
   });
 }
 
+function readBufferBody(request, maxBytes = MAX_ARCHIVE_BYTES) {
+  return new Promise((resolve, reject) => {
+    const contentLength = Number(request.headers['content-length'] || 0);
+    if (contentLength > maxBytes) {
+      request.resume();
+      reject(Object.assign(new Error('The mod ZIP is larger than 512 MB.'), { statusCode: 413 }));
+      return;
+    }
+    const chunks = [];
+    let bytes = 0;
+    let settled = false;
+    request.on('data', (chunk) => {
+      if (settled) return;
+      bytes += chunk.length;
+      if (bytes > maxBytes) {
+        settled = true;
+        request.resume();
+        reject(Object.assign(new Error('The mod ZIP is larger than 512 MB.'), { statusCode: 413 }));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on('end', () => {
+      if (!settled) resolve(Buffer.concat(chunks));
+    });
+    request.on('error', (error) => {
+      if (!settled) reject(error);
+    });
+  });
+}
+
+async function assertModsOffline() {
+  if (await isServerRunning()) throw Object.assign(new Error('Stop the server before changing mods.'), { statusCode: 409 });
+  if (await isUpdateRunning()) throw Object.assign(new Error('Wait for the server update to finish before changing mods.'), { statusCode: 409 });
+}
+
 function serveStatic(requestPath, response) {
   const relative = requestPath === '/' ? 'index.html' : requestPath.replace(/^\/+/, '');
   const resolved = path.resolve(PUBLIC_DIR, relative);
@@ -631,6 +746,7 @@ async function handleApi(request, response, pathname) {
   if (request.method === 'GET' && pathname === '/api/manager/settings') return sendJson(response, 200, managerSettings);
   if (request.method === 'GET' && pathname === '/api/backups') return sendJson(response, 200, { manager: listManagerBackups(), builtIn: countBuiltInBackups() });
   if (request.method === 'GET' && pathname === '/api/activity') return sendJson(response, 200, { events: readActivity(), updateLog: tailFile(UPDATE_LOG_PATH) });
+  if (request.method === 'GET' && pathname === '/api/mods') return sendJson(response, 200, modManager.list());
 
   if (request.method === 'POST' && pathname === '/api/settings') {
     if (await isServerRunning()) return sendJson(response, 409, { error: 'Stop the server before changing settings.' });
@@ -655,6 +771,42 @@ async function handleApi(request, response, pathname) {
   if (request.method === 'POST' && pathname === '/api/server/force-stop') { await forceStopServer(); return sendJson(response, 200, { ok: true }); }
   if (request.method === 'POST' && pathname === '/api/update') return sendJson(response, 202, { ok: true, ...(await updateServer()) });
   if (request.method === 'POST' && pathname === '/api/network/refresh') return sendJson(response, 200, { publicIp: await refreshPublicIp() });
+  if (request.method === 'POST' && pathname === '/api/mods/workshop/lookup') {
+    const body = await readJsonBody(request);
+    return sendJson(response, 200, await lookupWorkshopItem(body.value));
+  }
+  if (request.method === 'POST' && pathname === '/api/mods/workshop/open') {
+    const body = await readJsonBody(request);
+    const item = await lookupWorkshopItem(body.value);
+    const steam = await openWorkshopItemInSteam(item);
+    return sendJson(response, 200, { ...item, ...steam });
+  }
+  if (request.method === 'POST' && pathname === '/api/mods/global') {
+    await assertModsOffline();
+    const body = await readJsonBody(request);
+    return sendJson(response, 200, modManager.setGlobalEnabled(body.enabled));
+  }
+  if (request.method === 'POST' && pathname === '/api/mods/toggle') {
+    await assertModsOffline();
+    const body = await readJsonBody(request);
+    return sendJson(response, 200, modManager.setModEnabled(body.packageName, body.enabled));
+  }
+  if (request.method === 'POST' && pathname === '/api/mods/import-steam') {
+    await assertModsOffline();
+    const body = await readJsonBody(request);
+    return sendJson(response, 201, { ok: true, mod: modManager.installFromSteam(body.sourceId), library: modManager.list() });
+  }
+  if (request.method === 'POST' && pathname === '/api/mods/upload') {
+    await assertModsOffline();
+    const filename = decodeURIComponent(String(request.headers['x-file-name'] || 'mod.zip'));
+    const archive = await readBufferBody(request);
+    return sendJson(response, 201, { ok: true, mod: await modManager.installFromArchive(archive, filename), library: modManager.list() });
+  }
+  if (request.method === 'POST' && pathname === '/api/mods/remove') {
+    await assertModsOffline();
+    const body = await readJsonBody(request);
+    return sendJson(response, 200, modManager.remove(body.packageName));
+  }
   if (request.method === 'POST' && pathname === '/api/backup') {
     if (await isServerRunning()) return sendJson(response, 409, { error: 'Stop the server before creating a portable backup. Palworld rolling backups continue while online.' });
     return sendJson(response, 201, { ok: true, name: createBackup('manual') });
@@ -666,7 +818,7 @@ async function handleApi(request, response, pathname) {
   }
   if (request.method === 'POST' && pathname === '/api/open') {
     const body = await readJsonBody(request);
-    const choices = { server: SERVER_DIR, saves: SAVES_PATH, backups: BACKUPS_PATH, config: path.dirname(CONFIG_PATH) };
+    const choices = { server: SERVER_DIR, saves: SAVES_PATH, backups: BACKUPS_PATH, config: path.dirname(CONFIG_PATH), mods: modManager.workshopDir };
     if (!choices[body.target]) return sendJson(response, 400, { error: 'Folder target is invalid.' });
     if (!TEST_MODE) spawn('explorer.exe', [choices[body.target]], { detached: true, stdio: 'ignore', windowsHide: false }).unref();
     return sendJson(response, 200, { ok: true });
@@ -697,7 +849,7 @@ const server = http.createServer(async (request, response) => {
     else serveStatic(decodeURIComponent(url.pathname), response);
   } catch (error) {
     logEvent('error', error.message, { stack: error.stack });
-    if (!response.headersSent) sendJson(response, error.requiresForce ? 409 : 500, { error: error.message, requiresForce: Boolean(error.requiresForce) });
+    if (!response.headersSent) sendJson(response, error.statusCode || (error.requiresForce ? 409 : 500), { error: error.message, requiresForce: Boolean(error.requiresForce) });
     else response.end();
   }
 });
@@ -754,6 +906,7 @@ module.exports = {
   createBackup,
   isServerRunning,
   listManagerBackups,
+  modManager,
   readConfigBundle,
   restoreBackup,
   saveSettings,

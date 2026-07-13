@@ -16,6 +16,8 @@ PalSphere does **not** redistribute Palworld, SteamCMD, Node.js, DirectX, or Mic
 - Customizable player join message with a fixed `Hosted by PalSphere` signature
 - Editing for every setting supplied by the installed Palworld server
 - Plain-English guidance for every installed setting, including units, dependencies, and performance cautions
+- Native Palworld Workshop server-mod management with Steam subscription discovery and ZIP import
+- Server compatibility validation plus install, update, enable/disable, and remove controls
 - Graceful save, shutdown, update, backup, and restore controls
 - Palworld rolling backups plus 12 portable world snapshots
 - Bounded crash recovery with restart-loop protection
@@ -54,6 +56,18 @@ Double-click **Uninstall PalSphere.bat**. If you choose to remove downloaded fil
 After installation, double-click **Launch PalSphere.bat**. Use the dashboard's **Start server** and **Save & Stop** controls rather than launching `PalServer.exe` directly.
 
 PalSphere itself remains local-only. Closing the browser tab does not stop the manager or game server. Use **Close studio** only after the Palworld server is offline.
+
+## Install and manage mods
+
+Open **Mods** in the dashboard sidebar. PalSphere uses Palworld's native Workshop server-mod format; a compatible package contains an `Info.json` whose server install rule includes `"IsServer": true`.
+
+Paste a Steam Workshop item URL or numeric ID into the Mods page. PalSphere verifies that the item belongs to Palworld, then opens it in your signed-in Steam client so Steam can authenticate the subscription and download. After you click **Subscribe**, PalSphere watches the local Workshop folder and offers installation as soon as the download appears. Valve does not provide a public file URL, and anonymous SteamCMD downloads can be rejected, so PalSphere never asks for or stores Steam credentials.
+
+You can also import any subscribed mod already detected in a local Steam library or choose a Workshop-format ZIP. PalSphere validates the package, preserves its numeric Workshop ID under `server\Mods\Workshop`, adds its `PackageName` to `PalModSettings.ini`, and lets Palworld deploy the correct UE4SS, Lua, PalSchema, LogicMods, or Pak files on the next server start.
+
+The server must be stopped to install, update, enable, disable, or remove mods. Installing a package with the same `PackageName` updates or reinstalls it. Disabling removes it from Palworld's active list; removing also deletes its Workshop source so Palworld can clean up the deployed copy on the next start.
+
+Some server-compatible gameplay mods still include a client component. PalSphere labels packages with client install rules, but the mod author decides whether every player needs the matching client version. Check the Workshop page, install declared dependencies, and create a portable world backup before major mod changes. The `bAllowClientMod` server setting only allows mod-enabled clients to connect; it does not install server or player mods.
 
 ## Let friends connect
 

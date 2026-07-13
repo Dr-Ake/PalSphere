@@ -26,6 +26,11 @@ const state = {
   baseline: null,
   backups: null,
   activity: null,
+  mods: null,
+  workshopLookup: null,
+  workshopWatchTimer: null,
+  workshopWatchAttempts: 0,
+  workshopPollBusy: false,
   managerSettings: null,
   busy: new Set(),
   lastServerState: null,
@@ -39,6 +44,7 @@ const state = {
 const pageMeta = {
   dashboard: ['SERVER OVERVIEW', 'Dashboard'],
   settings: ['WORLD CONFIGURATION', 'Server settings'],
+  mods: ['SERVER CUSTOMIZATION', 'Mods'],
   backups: ['WORLD PROTECTION', 'Saves & backups'],
   activity: ['MAINTENANCE', 'Activity & tools'],
 };
@@ -57,6 +63,22 @@ async function api(path, options = {}) {
     error.payload = payload;
     throw error;
   }
+  return payload;
+}
+
+async function apiUpload(path, file) {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/zip',
+      'X-File-Name': encodeURIComponent(file.name),
+    },
+    body: file,
+    cache: 'no-store',
+  });
+  let payload = {};
+  try { payload = await response.json(); } catch { /* no JSON */ }
+  if (!response.ok) throw new Error(payload.error || `Upload failed with HTTP ${response.status}.`);
   return payload;
 }
 
@@ -176,6 +198,7 @@ function setPage(page) {
   $('#page-eyebrow').textContent = eyebrow;
   $('#page-title').textContent = title;
   if (page === 'backups') refreshBackups();
+  if (page === 'mods') refreshMods();
   if (page === 'activity') refreshActivity();
   window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
 }
@@ -194,6 +217,17 @@ function updateActionStates() {
   if ($('#save-watchdog')) $('#save-watchdog').disabled = state.busy.has('watchdog');
   if ($('#startup-enabled')) $('#startup-enabled').disabled = state.busy.has('startup');
   if ($('#community-listing-enabled')) $('#community-listing-enabled').disabled = blocked || running || state.busy.has('community-listing');
+  if ($('#mods-lock')) $('#mods-lock').hidden = !running && !state.status.updating;
+  if ($('#mods-global-enabled')) $('#mods-global-enabled').disabled = blocked || running;
+  if ($('#lookup-workshop-item')) $('#lookup-workshop-item').disabled = state.busy.has('workshop');
+  if ($('#open-workshop-item')) $('#open-workshop-item').disabled = state.busy.has('workshop-open');
+  if ($('#check-workshop-download')) $('#check-workshop-download').disabled = state.busy.has('workshop');
+  if ($('#install-workshop-item')) $('#install-workshop-item').disabled = blocked || running || !state.workshopLookup?.sourceId;
+  if ($('#steam-mod-picker')) $('#steam-mod-picker').disabled = blocked || running || !state.mods?.available.length;
+  if ($('#import-steam-mod')) $('#import-steam-mod').disabled = blocked || running || !$('#steam-mod-picker').value;
+  if ($('#choose-mod-zip')) $('#choose-mod-zip').disabled = blocked || running;
+  $$('.mod-action').forEach((button) => { button.disabled = blocked || running || button.dataset.incompatible === 'true'; });
+  $$('.mod-toggle').forEach((input) => { input.disabled = blocked || running || input.dataset.incompatible === 'true'; });
   $('#settings-lock').hidden = !running && !state.status.updating;
   renderDirtyState();
 }
@@ -648,6 +682,262 @@ async function copyText(value, label) {
   toast(`${label} copied`, value);
 }
 
+function modTag(text, tone = '') {
+  const tag = document.createElement('span');
+  tag.className = `mod-tag ${tone}`.trim();
+  tag.textContent = text;
+  return tag;
+}
+
+function renderMods() {
+  if (!state.mods || !state.status) return;
+  const installed = state.mods.installed || [];
+  const available = state.mods.available || [];
+  const locked = state.status.running || state.status.updating || state.busy.size > 0;
+  const currentSource = $('#steam-mod-picker').value;
+  $('#mods-count').textContent = installed.length;
+  $('#mods-installed-count').textContent = installed.length;
+  $('#mods-active-count').textContent = installed.filter((mod) => mod.active).length;
+  $('#mods-steam-count').textContent = available.length;
+  $('#mods-restart-note').textContent = installed.some((mod) => mod.active) ? 'Applied when the server starts' : 'No mods selected';
+  $('#mods-global-enabled').checked = Boolean(state.mods.globalEnabled);
+  $('#mods-global-detail').textContent = state.mods.globalEnabled ? 'Active packages will load' : 'All mods are bypassed';
+
+  const list = $('#mods-installed-list');
+  list.replaceChildren();
+  $('#mods-empty').hidden = installed.length > 0;
+  for (const mod of installed) {
+    const card = document.createElement('div');
+    card.className = `mod-card ${mod.active ? 'is-active' : ''} ${mod.invalid ? 'invalid' : ''}`.trim();
+    const copy = document.createElement('div');
+    const title = document.createElement('div'); title.className = 'mod-card-title';
+    const name = document.createElement('strong'); name.textContent = mod.name;
+    const version = document.createElement('span'); version.className = 'mod-version'; version.textContent = `v${mod.version}`;
+    title.append(name, version);
+    const packageName = document.createElement('div'); packageName.className = 'mod-package-name'; packageName.textContent = `${mod.packageName} · ${mod.author}`;
+    const meta = document.createElement('div'); meta.className = 'mod-meta';
+    meta.append(mod.serverCompatible ? modTag('Server compatible', 'good') : modTag('Not server compatible', 'warn'));
+    if (mod.installTypes?.length) meta.append(modTag(mod.installTypes.join(' + ')));
+    if (mod.deployed) meta.append(modTag('Deployed', 'good'));
+    if (mod.clientFilesIncluded) meta.append(modTag('Client files included', 'warn'));
+    if (mod.dependencies?.length) meta.append(modTag(`${mod.dependencies.length} ${mod.dependencies.length === 1 ? 'dependency' : 'dependencies'}`));
+    const note = document.createElement('p'); note.className = 'mod-card-note';
+    note.textContent = mod.invalid ? mod.error : (mod.dependencies?.length
+      ? `Requires: ${mod.dependencies.join(', ')}. Check that every prerequisite is installed.`
+      : (mod.clientFilesIncluded ? 'This package includes client rules. Check its Workshop page to see whether every player also needs the mod.' : 'No client install rule is declared by this package.'));
+    copy.append(title, packageName, meta, note);
+
+    const actions = document.createElement('div'); actions.className = 'mod-card-actions';
+    const update = available.find((candidate) => candidate.packageName === mod.packageName && candidate.updateAvailable && candidate.serverCompatible);
+    if (update) {
+      const updateButton = document.createElement('button'); updateButton.className = 'button soft mod-action'; updateButton.textContent = `Update to ${update.version}`;
+      updateButton.addEventListener('click', () => importSteamMod(update.sourceId));
+      actions.append(updateButton);
+    }
+    const toggleLabel = document.createElement('label'); toggleLabel.className = 'toggle'; toggleLabel.title = mod.active ? 'Disable on next start' : 'Enable on next start';
+    const toggle = document.createElement('input'); toggle.type = 'checkbox'; toggle.checked = Boolean(mod.active); toggle.className = 'mod-toggle'; toggle.dataset.incompatible = String(!mod.serverCompatible || mod.invalid);
+    const track = document.createElement('span'); track.className = 'toggle-track';
+    toggle.addEventListener('change', () => toggleMod(mod.packageName, toggle.checked));
+    toggleLabel.append(toggle, track);
+    const remove = document.createElement('button'); remove.className = 'button danger-outline mod-action'; remove.textContent = 'Remove';
+    remove.addEventListener('click', () => removeMod(mod));
+    actions.append(toggleLabel, remove);
+    card.append(copy, actions); list.append(card);
+  }
+
+  const picker = $('#steam-mod-picker');
+  picker.replaceChildren();
+  if (!available.length) {
+    const option = document.createElement('option'); option.value = ''; option.textContent = 'No local subscriptions found'; picker.append(option);
+  } else {
+    const prompt = document.createElement('option'); prompt.value = ''; prompt.textContent = 'Choose a subscribed mod…'; picker.append(prompt);
+    for (const mod of available) {
+      const option = document.createElement('option');
+      option.value = mod.sourceId;
+      option.disabled = !mod.serverCompatible;
+      option.textContent = `${mod.name} · v${mod.version}${mod.installed ? (mod.updateAvailable ? ` · update from ${mod.installedVersion}` : ' · installed') : ''}${mod.serverCompatible ? '' : ' · client only'}`;
+      picker.append(option);
+    }
+    if ([...picker.options].some((option) => option.value === currentSource && !option.disabled)) picker.value = currentSource;
+  }
+  const selected = available.find((mod) => mod.sourceId === picker.value);
+  $('#import-steam-mod').textContent = selected?.installed ? (selected.updateAvailable ? 'Update selected mod' : 'Reinstall selected mod') : 'Install selected mod';
+  $('#mods-lock').hidden = !state.status.running && !state.status.updating;
+  $('#mods-global-enabled').disabled = locked;
+  picker.disabled = locked || !available.length;
+  $('#import-steam-mod').disabled = locked || !picker.value;
+  $('#choose-mod-zip').disabled = locked;
+  $$('.mod-action', list).forEach((button) => { button.disabled = locked; });
+  $$('.mod-toggle', list).forEach((input) => { input.disabled = locked || input.dataset.incompatible === 'true'; });
+  renderWorkshopLookup();
+}
+
+function renderWorkshopLookup() {
+  const item = state.workshopLookup;
+  const result = $('#workshop-lookup-result');
+  result.hidden = !item;
+  if (!item) return;
+  $('#workshop-result-title').textContent = item.title;
+  $('#workshop-result-meta').textContent = `Workshop ${item.workshopId}${item.fileBytes ? ` · ${formatBytes(item.fileBytes)}` : ''}${item.updatedAt ? ` · updated ${relativeTime(item.updatedAt)}` : ''}`;
+  const status = $('#workshop-result-status');
+  if (!item.downloaded) status.textContent = 'Verified as a Palworld item. PalSphere cannot subscribe for your Steam account: open it below, then click Subscribe inside Steam. PalSphere will watch for the completed download.';
+  else if (!item.serverCompatible) status.textContent = 'Steam downloaded this item, but its Info.json does not declare dedicated-server support.';
+  else if (item.installed) status.textContent = `Downloaded and installed on the server${item.installedVersion ? ` (v${item.installedVersion})` : ''}.`;
+  else status.textContent = `Download detected${item.version ? ` · package v${item.version}` : ''}. Stop the server to install it.`;
+  $('#open-workshop-item').textContent = item.downloaded ? 'View in Steam' : 'Open in Steam, then subscribe';
+  $('#check-workshop-download').hidden = item.downloaded;
+  const install = $('#install-workshop-item');
+  install.hidden = !item.downloaded || item.serverCompatible !== true;
+  install.textContent = item.installed ? 'Reinstall server mod' : 'Install server mod';
+  install.disabled = Boolean(state.status?.running || state.status?.updating || state.busy.size > 0 || !item.sourceId);
+}
+
+async function lookupWorkshopItem({ quiet = false } = {}) {
+  const value = $('#workshop-url-input').value.trim();
+  if (!value) {
+    if (!quiet) toast('Enter a Workshop link', 'Paste a Steam Workshop item URL or numeric ID.', 'error');
+    return null;
+  }
+  const perform = async () => {
+    const item = await api('/api/mods/workshop/lookup', { method: 'POST', body: { value } });
+    state.workshopLookup = item;
+    renderWorkshopLookup();
+    if (item.downloaded) await refreshMods(true);
+    return item;
+  };
+  if (quiet) {
+    try { return await perform(); } catch { return null; }
+  }
+  try {
+    return await withBusy('workshop', async () => {
+      const item = await perform();
+      toast('Workshop item found', `${item.title} belongs to Palworld${item.downloaded ? ' and is downloaded' : ''}.`);
+      return item;
+    });
+  } catch { return null; }
+}
+
+function stopWorkshopWatch() {
+  if (state.workshopWatchTimer) clearInterval(state.workshopWatchTimer);
+  state.workshopWatchTimer = null;
+  state.workshopWatchAttempts = 0;
+  state.workshopPollBusy = false;
+}
+
+function startWorkshopWatch() {
+  stopWorkshopWatch();
+  state.workshopWatchTimer = setInterval(async () => {
+    if (state.workshopPollBusy) return;
+    state.workshopWatchAttempts += 1;
+    if (state.workshopWatchAttempts > 40) { stopWorkshopWatch(); return; }
+    state.workshopPollBusy = true;
+    try {
+      const item = await lookupWorkshopItem({ quiet: true });
+      if (item?.downloaded) {
+        stopWorkshopWatch();
+        await refreshMods(true);
+        renderWorkshopLookup();
+        toast('Workshop download detected', `${item.title} is ready to install when the server is stopped.`);
+      }
+    } finally {
+      state.workshopPollBusy = false;
+    }
+  }, 3000);
+}
+
+async function openWorkshopItem() {
+  if (!state.workshopLookup) return;
+  try {
+    await withBusy('workshop-open', async () => {
+      const result = await api('/api/mods/workshop/open', { method: 'POST', body: { value: state.workshopLookup.workshopId } });
+      if (!result.simulated && !result.steamClientRunning) throw new Error('Steam did not start.');
+      toast('Steam is open', 'Now click Subscribe in the Steam window. PalSphere will check for the download for the next two minutes.');
+      startWorkshopWatch();
+    });
+  } catch { /* withBusy already reported the failure */ }
+}
+
+async function installLookedUpWorkshopItem() {
+  const item = state.workshopLookup;
+  if (!item?.sourceId) return;
+  try {
+    await importSteamMod(item.sourceId);
+    await lookupWorkshopItem({ quiet: true });
+    renderWorkshopLookup();
+  } catch { /* withBusy already reported the failure */ }
+}
+
+async function refreshMods(quiet = false) {
+  try { state.mods = await api('/api/mods'); renderMods(); }
+  catch (error) { if (!quiet && state.page === 'mods') toast('Could not load mods', error.message, 'error'); }
+}
+
+async function setGlobalMods(enabled) {
+  try {
+    await withBusy('mods', async () => {
+      state.mods = await api('/api/mods/global', { method: 'POST', body: { enabled } });
+      renderMods(); await refreshActivity();
+      toast(enabled ? 'Mod system enabled' : 'Mod system disabled', enabled ? 'Active mods will load on the next server start.' : 'No mods will load until this switch is turned back on.');
+    });
+  } catch { await refreshMods(true); }
+}
+
+async function toggleMod(packageName, enabled) {
+  try {
+    await withBusy('mods', async () => {
+      state.mods = await api('/api/mods/toggle', { method: 'POST', body: { packageName, enabled } });
+      renderMods(); await refreshActivity();
+      toast(enabled ? 'Mod enabled' : 'Mod disabled', 'The change will apply on the next server start.');
+    });
+  } catch { await refreshMods(true); }
+}
+
+async function importSteamMod(sourceId = $('#steam-mod-picker').value) {
+  if (!sourceId) return;
+  await withBusy('mods', async () => {
+    const result = await api('/api/mods/import-steam', { method: 'POST', body: { sourceId } });
+    state.mods = result.library;
+    renderMods(); await refreshActivity();
+    const active = state.mods.installed.find((mod) => mod.packageName === result.mod.packageName)?.active;
+    toast(result.mod.updated ? 'Mod updated' : 'Mod installed', `${result.mod.name} ${result.mod.version} ${active ? 'is active for the next server start' : 'remains disabled'}.`);
+  });
+}
+
+async function removeMod(mod) {
+  const confirmed = await confirmAction({ title: `Remove ${mod.name}?`, message: 'PalSphere will disable the package and remove its Workshop source. Palworld will clean up deployed files on the next server start.', confirmText: 'Remove mod', danger: true, icon: '×' });
+  if (!confirmed) return;
+  await withBusy('mods', async () => {
+    state.mods = await api('/api/mods/remove', { method: 'POST', body: { packageName: mod.packageName } });
+    renderMods(); await refreshActivity();
+    toast('Mod removed', `${mod.name} will no longer load.`);
+  });
+}
+
+async function chooseAndUploadMod() {
+  const input = $('#mod-zip-file');
+  input.value = '';
+  input.click();
+}
+
+async function uploadSelectedMod(file) {
+  $('#mod-zip-selection').textContent = `${file.name} · ${formatBytes(file.size)}`;
+  if (file.size > 512 * 1024 * 1024) {
+    toast('ZIP is too large', 'Choose a mod package smaller than 512 MB.', 'error');
+    return;
+  }
+  const confirmed = await confirmAction({ title: `Install ${file.name}?`, message: 'PalSphere will extract the ZIP, verify its Info.json and server install rule, then enable the package for the next server start.', confirmText: 'Install mod', icon: '↧' });
+  if (!confirmed) return;
+  await withBusy('mods', async () => {
+    const result = await apiUpload('/api/mods/upload', file);
+    state.mods = result.library;
+    renderMods(); await refreshActivity();
+    const active = state.mods.installed.find((mod) => mod.packageName === result.mod.packageName)?.active;
+    toast(result.mod.updated ? 'Mod updated' : 'Mod installed', `${result.mod.name} ${result.mod.version} ${active ? 'is active for the next server start' : 'remains disabled'}.`);
+    $('#mod-zip-file').value = '';
+    $('#mod-zip-selection').textContent = 'No file selected · 512 MB maximum';
+  });
+}
+
 function renderBackups() {
   if (!state.backups || !state.status) return;
   const manager = state.backups.manager;
@@ -805,6 +1095,15 @@ function wireEvents() {
   $('#reset-settings').addEventListener('click', () => { state.bundle.values = deepClone(state.baseline); renderSettings(); toast('Changes discarded'); });
   $('#settings-search').addEventListener('input', (event) => { state.search = event.target.value; renderSettings(); });
   $('#preset-picker').addEventListener('change', (event) => { applyPreset(event.target.value); event.target.value = ''; });
+  $('#mods-global-enabled').addEventListener('change', (event) => setGlobalMods(event.target.checked));
+  $('#workshop-lookup-form').addEventListener('submit', (event) => { event.preventDefault(); lookupWorkshopItem(); });
+  $('#open-workshop-item').addEventListener('click', openWorkshopItem);
+  $('#check-workshop-download').addEventListener('click', () => lookupWorkshopItem());
+  $('#install-workshop-item').addEventListener('click', installLookedUpWorkshopItem);
+  $('#steam-mod-picker').addEventListener('change', renderMods);
+  $('#import-steam-mod').addEventListener('click', () => importSteamMod());
+  $('#choose-mod-zip').addEventListener('click', chooseAndUploadMod);
+  $('#mod-zip-file').addEventListener('change', (event) => { if (event.target.files[0]) uploadSelectedMod(event.target.files[0]); });
   $('#create-backup').addEventListener('click', handleBackup);
   $('#update-server').addEventListener('click', handleUpdate);
   $('#save-watchdog').addEventListener('click', saveWatchdogSettings);
@@ -835,11 +1134,11 @@ function wireEvents() {
 async function initialize() {
   wireEvents();
   try {
-    [state.bundle, state.status, state.backups, state.activity, state.managerSettings] = await Promise.all([
-      api('/api/settings'), api('/api/status'), api('/api/backups'), api('/api/activity'), api('/api/manager/settings'),
+    [state.bundle, state.status, state.backups, state.activity, state.managerSettings, state.mods] = await Promise.all([
+      api('/api/settings'), api('/api/status'), api('/api/backups'), api('/api/activity'), api('/api/manager/settings'), api('/api/mods'),
     ]);
     state.baseline = deepClone(state.bundle.values);
-    renderStatus(); renderSettings(); renderBackups(); renderActivity(); renderWatchdogPolicy(); renderCommunityListing();
+    renderStatus(); renderSettings(); renderBackups(); renderActivity(); renderWatchdogPolicy(); renderCommunityListing(); renderMods();
     if (!state.status.publicIp) api('/api/network/refresh', { method: 'POST' }).then(() => refreshStatus()).catch(() => {});
     $('#app').classList.remove('is-loading');
     $('#loading-screen').classList.add('done');

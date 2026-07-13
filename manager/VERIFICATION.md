@@ -1,6 +1,6 @@
 # PalSphere verification
 
-Verified on July 9, 2026 against the installed Palworld 1.0 dedicated server.
+Verified through July 12, 2026 against the installed Palworld 1.0 dedicated server.
 
 - Parsed, validated, serialized, and round-tripped all 119 installed settings.
 - Served dashboard and assets from `127.0.0.1:8219` with a restrictive content-security policy.
@@ -21,3 +21,12 @@ Verified on July 9, 2026 against the installed Palworld 1.0 dedicated server.
 - Registered the `PalSphere Server Studio` Windows sign-in task so the hidden watchdog returns after login.
 - Added live-save and rolling-backup freshness visibility plus an automatic portable world snapshot before server updates.
 - Confirmed the only matching enabled inbound game-management firewall allowance is the program-scoped UDP 8211 Palworld rule; REST 8212 and RCON 25575 are not exposed.
+- Added Palworld native Workshop mod discovery, install/update, enable/disable, global bypass, and remove operations with offline-only mutation guards.
+- Verified official-style `Info.json` parsing, client-only rejection, active-state preservation during updates, and `PalModSettings.ini` preservation with temporary server fixtures.
+- Verified ZIP import end to end through the Windows extraction helper, including traversal rejection, 512 MB upload limits, 2 GB expanded limits, and a 20,000-file ceiling.
+- Exercised the Mods page in the browser at desktop and PalSphere's 1040 px minimum layout width; navigation, empty states, import controls, compatibility guidance, and the browser console were clean.
+- Verified Workshop URL/ID parsing and Valve metadata lookup with Creative Menu item `3625287786`; the live API confirmed its Palworld app ID, title, and 680,430-byte file size.
+- Confirmed anonymous SteamCMD rejects that item, while the signed-in Steam-client handoff opens the exact item without asking PalSphere to collect credentials.
+- Exercised the v1.8.2 paste-link and folder-import flows with a real Creative Menu Workshop package.
+- Verified Palworld created `Mods/ManagedMods/CreativeMenu/InstallManifest.json`, deployed `CreativeMenu_P.pak`, and reached REST-ready online state with the mod active.
+- Passed the automated tests, installer dry-run, Git publish-set audit, release validation, and the PalSphere 1.8.2 archive build.

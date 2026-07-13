@@ -15,7 +15,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-$PalSphereVersion = '1.6.0'
+$PalSphereVersion = '1.8.2'
 $SteamCmdUrl = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip'
 $NodeIndexUrl = 'https://nodejs.org/dist/index.json'
 $VcRuntimeUrl = 'https://aka.ms/vc14/vc_redist.x64.exe'

@@ -16,8 +16,8 @@ else {
 $required = @(
     '.gitignore', '.gitattributes', 'LICENSE', 'README.md', 'SECURITY.md',
     'Install PalSphere.bat', 'Launch PalSphere.bat', 'Uninstall PalSphere.bat',
-    'manager\server-manager.js', 'manager\public\index.html',
-    'scripts\Install-PalSphere.ps1', 'scripts\Initialize-PalSphereConfig.js'
+    'manager\server-manager.js', 'manager\lib\mods.js', 'manager\public\index.html',
+    'scripts\Expand-PalSphereMod.ps1', 'scripts\Install-PalSphere.ps1', 'scripts\Initialize-PalSphereConfig.js'
 )
 foreach ($relative in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $RepositoryRoot $relative))) {
@@ -45,7 +45,7 @@ Push-Location $RepositoryRoot
 try {
     & $node --test 'manager/tests/*.test.js'
     if ($LASTEXITCODE -ne 0) { throw 'Automated tests failed.' }
-    foreach ($script in @('manager/server-manager.js', 'manager/public/app.js', 'manager/lib/watchdog.js', 'scripts/Initialize-PalSphereConfig.js')) {
+    foreach ($script in @('manager/server-manager.js', 'manager/public/app.js', 'manager/lib/mods.js', 'manager/lib/watchdog.js', 'scripts/Initialize-PalSphereConfig.js')) {
         & $node --check $script
         if ($LASTEXITCODE -ne 0) { throw "Node.js syntax check failed: $script" }
     }
@@ -65,7 +65,7 @@ try {
         $candidates = @(git ls-files --cached --others --exclude-standard)
         $forbiddenPaths = $candidates | Where-Object {
             $_ -match '^(server|_steamcmd|_prerequisites|\.runtime)/' -or
-            $_ -match '^manager/(backups|config-history|logs)/' -or
+            $_ -match '^manager/(backups|config-history|logs|mod-staging)/' -or
             $_ -in @('PalSphere Server Info - Private.txt', 'SERVER INFO - KEEP PRIVATE.txt', 'manager/manager-settings.json')
         }
         if ($forbiddenPaths) { throw "Private or downloaded files would be published: $($forbiddenPaths -join ', ')" }

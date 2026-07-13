@@ -76,3 +76,22 @@ test('settings actions remain sticky beneath the main header while scrolling', (
   assert.match(styles, /\.settings-toolbar\s*\{[^}]*top:\s*82px/);
   assert.match(styles, /\.settings-toolbar\s*\{[^}]*z-index:\s*19/);
 });
+
+test('native Palworld server mod management is wired into the UI', () => {
+  const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
+  for (const id of ['mods-global-enabled', 'mods-installed-list', 'workshop-url-input', 'lookup-workshop-item', 'open-workshop-item', 'check-workshop-download', 'install-workshop-item', 'steam-mod-picker', 'import-steam-mod', 'mod-zip-file', 'choose-mod-zip']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /\/api\/mods\/import-steam/);
+  assert.match(app, /\/api\/mods\/upload/);
+  assert.match(app, /\/api\/mods\/toggle/);
+  assert.match(app, /\/api\/mods\/remove/);
+  assert.match(app, /\/api\/mods\/workshop\/lookup/);
+  assert.match(app, /\/api\/mods\/workshop\/open/);
+  assert.match(app, /serverCompatible/);
+  assert.match(app, /clientFilesIncluded/);
+  assert.match(html, /You click Subscribe in Steam/);
+  assert.match(app, /PalSphere cannot subscribe for your Steam account/);
+  assert.match(app, /Steam is open/);
+});

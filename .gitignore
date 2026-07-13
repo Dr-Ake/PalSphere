@@ -9,9 +9,13 @@
 /manager/backups/
 /manager/config-history/
 /manager/logs/
+/manager/mod-staging/
 /PalSphere.install.json
 /PalSphere Server Info - Private.txt
 /SERVER INFO - KEEP PRIVATE.txt
+
+# Workshop packages temporarily dropped into the project root
+/[0-9]*/
 
 # Palworld saves and generated configuration must never be committed
 *.sav

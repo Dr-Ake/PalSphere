@@ -38,6 +38,10 @@
           <span class="nav-icon">⌁</span><span>Server settings</span>
           <span id="settings-count" class="nav-count">—</span>
         </button>
+        <button class="nav-item" data-page="mods">
+          <span class="nav-icon">⬡</span><span>Mods</span>
+          <span id="mods-count" class="nav-count">0</span>
+        </button>
         <button class="nav-item" data-page="backups">
           <span class="nav-icon">◫</span><span>Saves & backups</span>
         </button>
@@ -196,6 +200,79 @@
         </div>
         <div id="settings-grid" class="settings-grid"></div>
         <div id="no-settings" class="empty-state" hidden><strong>No matching settings</strong><p>Try another search phrase or category.</p></div>
+      </section>
+
+      <section class="page" data-page-panel="mods">
+        <div id="mods-lock" class="lock-banner" hidden>
+          <span>🔒</span><div><strong>Mods are locked while the server runs</strong><p>Save and stop the server before installing, updating, enabling, disabling, or removing mods.</p></div>
+        </div>
+
+        <div class="mod-hero panel">
+          <div>
+            <p class="eyebrow">PALWORLD MOD SYSTEM</p>
+            <h2>Build your server’s mod collection.</h2>
+            <p>PalSphere uses Palworld’s native Workshop mod system. It accepts packages with an <strong>Info.json</strong>, verifies dedicated-server support, and lets Palworld deploy the right files on the next start.</p>
+          </div>
+          <div class="mod-master-control">
+            <span><strong id="mods-global-label">Allow active mods</strong><small id="mods-global-detail">The mod system is off</small></span>
+            <label class="toggle"><input id="mods-global-enabled" type="checkbox" aria-labelledby="mods-global-label"><span class="toggle-track"></span></label>
+          </div>
+        </div>
+
+        <div class="mod-stat-grid">
+          <article class="backup-stat"><span>Installed packages</span><strong id="mods-installed-count">0</strong><small>Stored in the server Workshop folder</small></article>
+          <article class="backup-stat"><span>Active on next start</span><strong id="mods-active-count">0</strong><small id="mods-restart-note">No mods selected</small></article>
+          <article class="backup-stat"><span>Steam subscriptions found</span><strong id="mods-steam-count">0</strong><small>Detected in your local Steam libraries</small></article>
+        </div>
+
+        <div class="mods-layout">
+          <article class="panel mods-installed-panel">
+            <div class="panel-heading">
+              <div><p class="eyebrow">SERVER COLLECTION</p><h3>Installed mods</h3><p>Changes take effect the next time the Palworld server starts.</p></div>
+              <button class="button ghost" data-open-folder="mods">Open mod folder</button>
+            </div>
+            <div id="mods-installed-list" class="mods-installed-list"></div>
+            <div id="mods-empty" class="empty-state"><strong>No server mods installed yet</strong><p>Import a compatible Steam Workshop subscription or a ZIP package to begin.</p></div>
+          </article>
+
+          <aside class="mods-import-column">
+            <article class="panel mod-import-panel">
+              <div class="tool-icon">↧</div>
+              <div><p class="eyebrow">STEAM WORKSHOP</p><h3>Paste a mod link or ID</h3><p>PalSphere verifies the item and opens the real Steam client. You click Subscribe in Steam; after Steam downloads it, PalSphere detects and installs the server copy.</p></div>
+              <form id="workshop-lookup-form" class="workshop-lookup-form">
+                <label class="mod-source-picker"><span>Workshop URL or ID</span><input id="workshop-url-input" type="text" inputmode="url" autocomplete="off" placeholder="https://steamcommunity.com/sharedfiles/filedetails/?id=…"></label>
+                <button class="button primary" id="lookup-workshop-item" type="submit">Look up mod</button>
+              </form>
+              <div id="workshop-lookup-result" class="workshop-lookup-result" hidden>
+                <strong id="workshop-result-title">Workshop item</strong>
+                <small id="workshop-result-meta"></small>
+                <p id="workshop-result-status"></p>
+                <div class="workshop-result-actions">
+                  <button class="button soft" id="open-workshop-item" type="button">Open in Steam, then subscribe</button>
+                  <button class="button ghost" id="check-workshop-download" type="button">Check download</button>
+                  <button class="button primary mod-action" id="install-workshop-item" type="button" hidden>Install server mod</button>
+                </div>
+              </div>
+              <div class="mod-import-divider"><span>Downloaded subscriptions</span></div>
+              <label class="mod-source-picker"><span>Local Workshop package</span><select id="steam-mod-picker"><option value="">No subscriptions found</option></select></label>
+              <button class="button primary full-width" id="import-steam-mod" disabled>Install selected mod</button>
+              <a class="button soft full-width" href="https://steamcommunity.com/app/1623730/workshop/" target="_blank" rel="noreferrer">Browse Palworld Workshop</a>
+            </article>
+
+            <article class="panel mod-import-panel">
+              <div class="tool-icon">ZIP</div>
+              <div><p class="eyebrow">LOCAL PACKAGE</p><h3>Import a ZIP</h3><p>Choose one Workshop-format ZIP containing a single <strong>Info.json</strong>. PalSphere checks its install rules before copying anything into the server.</p></div>
+              <input id="mod-zip-file" type="file" accept=".zip,application/zip" hidden>
+              <button class="button ghost full-width" id="choose-mod-zip">Choose mod ZIP</button>
+              <small id="mod-zip-selection" class="mod-file-selection">No file selected · 512 MB maximum</small>
+            </article>
+
+            <article class="mod-safety-note">
+              <strong>Compatibility is mod-specific</strong>
+              <p>“Server compatible” means the package declares <code>IsServer: true</code>. Some gameplay mods still need matching client files for every player. Check the mod’s Workshop page and make a world backup before major changes.</p>
+            </article>
+          </aside>
+        </div>
       </section>
 
       <section class="page" data-page-panel="backups">
