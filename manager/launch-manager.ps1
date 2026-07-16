@@ -9,11 +9,17 @@ $healthUrl = 'http://127.0.0.1:8219/api/health'
 $serverScript = Join-Path $PSScriptRoot 'server-manager.js'
 $installRoot = Split-Path -Parent $PSScriptRoot
 $portableNode = Join-Path $installRoot '.runtime\node\node.exe'
+$packagePath = Join-Path $installRoot 'package.json'
+$expectedManagerVersion = if (Test-Path -LiteralPath $packagePath) { (Get-Content -Raw -LiteralPath $packagePath | ConvertFrom-Json).version } else { $null }
 
 function Test-ManagerHealth {
     try {
         $response = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 1
         if ($response.ok -ne $true) {
+            return $false
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string] $expectedManagerVersion) -and
+            -not [string]::Equals([string] $response.version, [string] $expectedManagerVersion, [StringComparison]::OrdinalIgnoreCase)) {
             return $false
         }
 
@@ -47,7 +53,11 @@ function Stop-OrphanedManager {
 
         $runningScript = $Matches[1]
         if (Test-Path -LiteralPath $runningScript) {
-            throw "Another PalSphere installation is already using port 8219: $runningScript. Close that studio before opening this one."
+            $resolvedRunningScript = [IO.Path]::GetFullPath($runningScript)
+            $resolvedExpectedScript = [IO.Path]::GetFullPath($serverScript)
+            if (-not [string]::Equals($resolvedRunningScript, $resolvedExpectedScript, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Another PalSphere installation is already using port 8219: $runningScript. Close that studio before opening this one."
+            }
         }
 
         $palworldRunning = Get-Process -Name 'PalServer', 'PalServer-Win64-Shipping-Cmd' -ErrorAction SilentlyContinue

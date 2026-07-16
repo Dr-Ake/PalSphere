@@ -7,6 +7,7 @@ const net = require('net');
 const path = require('path');
 const { execFile, spawn } = require('child_process');
 const { promisify } = require('util');
+const { listBuiltInBackups, restoreBuiltInWorldBackup } = require('./lib/backups');
 const { brandServerDescription } = require('./lib/branding');
 const { buildConfig, parseConfig } = require('./lib/config');
 const { buildLaunchArguments } = require('./lib/launch');
@@ -20,6 +21,7 @@ const ROOT = path.resolve(__dirname, '..');
 const SERVER_DIR = path.join(ROOT, 'server');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const CONFIG_PATH = path.join(SERVER_DIR, 'Pal', 'Saved', 'Config', 'WindowsServer', 'PalWorldSettings.ini');
+const GAME_USER_SETTINGS_PATH = path.join(SERVER_DIR, 'Pal', 'Saved', 'Config', 'WindowsServer', 'GameUserSettings.ini');
 const DEFAULT_CONFIG_PATH = path.join(SERVER_DIR, 'DefaultPalWorldSettings.ini');
 const SAVES_PATH = path.join(SERVER_DIR, 'Pal', 'Saved', 'SaveGames');
 const BACKUPS_PATH = path.join(__dirname, 'backups');
@@ -38,7 +40,7 @@ const PORT = Number(process.env.PAL_MANAGER_PORT || 8219);
 const PUBLIC_IP_LOOKUP_URL = process.env.PAL_PUBLIC_IP_LOOKUP_URL || 'https://api.ipify.org?format=json';
 const STEAM_WORKSHOP_DETAILS_URL = 'https://api.steampowered.com/ISteamRemoteStorage/GetPublishedFileDetails/v1/';
 const TEST_MODE = process.env.PAL_MANAGER_TEST_MODE === '1';
-const MANAGER_VERSION = '1.8.2';
+const MANAGER_VERSION = '1.9.0';
 const AUTOSTART_TASK_NAME = 'PalSphere Server Studio';
 
 for (const directory of [BACKUPS_PATH, CONFIG_HISTORY_PATH, LOGS_PATH]) {
@@ -325,29 +327,6 @@ async function getPalRuntime() {
   return runtimeCache.data;
 }
 
-function countBuiltInBackups() {
-  if (!fs.existsSync(SAVES_PATH)) return { count: 0, latest: null };
-  const found = [];
-  const walk = (directory) => {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      const full = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === 'world' && full.toLowerCase().includes(`${path.sep}backup${path.sep}`)) {
-          for (const backup of fs.readdirSync(full, { withFileTypes: true })) {
-            if (backup.isDirectory()) {
-              const backupPath = path.join(full, backup.name);
-              found.push({ name: backup.name, full: backupPath, modifiedAt: fs.statSync(backupPath).mtime.toISOString() });
-            }
-          }
-        } else walk(full);
-      }
-    }
-  };
-  walk(SAVES_PATH);
-  found.sort((a, b) => b.name.localeCompare(a.name));
-  return { count: found.length, latest: found[0]?.name || null, latestAt: found[0]?.modifiedAt || null };
-}
-
 function getLatestLiveSave() {
   if (!fs.existsSync(SAVES_PATH)) return null;
   let latest = 0;
@@ -411,6 +390,15 @@ function restoreBackup(name) {
   return safety;
 }
 
+function restoreBuiltInBackup(name) {
+  const available = listBuiltInBackups(SAVES_PATH, GAME_USER_SETTINGS_PATH);
+  if (!available.backups.some((backup) => backup.name === name)) throw new Error('Built-in backup was not found for the active world.');
+  const safety = createBackup('pre-built-in-restore');
+  const restored = restoreBuiltInWorldBackup(SAVES_PATH, GAME_USER_SETTINGS_PATH, name);
+  logEvent('restore', `Restored built-in backup ${name}.`, { ...restored, safetyBackup: safety });
+  return { ...restored, safetyBackup: safety };
+}
+
 function readActivity(limit = 80) {
   if (!fs.existsSync(ACTIVITY_PATH)) return [];
   return fs.readFileSync(ACTIVITY_PATH, 'utf8').trim().split(/\r?\n/).filter(Boolean).slice(-limit).reverse().map((line) => {
@@ -428,7 +416,7 @@ async function buildStatus() {
   const { values, schema } = readConfigBundle();
   const [running, updating, autostartEnabled] = await Promise.all([isServerRunning(), isUpdateRunning(), isAutostartEnabled()]);
   const runtime = running ? await getPalRuntime() : { restReady: false, playerCount: 0, players: [] };
-  const builtInBackups = countBuiltInBackups();
+  const builtInBackups = listBuiltInBackups(SAVES_PATH, GAME_USER_SETTINGS_PATH);
   const watchdogStatus = watchdog?.getStatus() || { ...managerSettings.watchdog, desiredRunning: false, phase: managerSettings.watchdog.enabled ? 'idle' : 'disabled' };
   const latestLiveSaveAt = getLatestLiveSave();
   const liveSaveAgeSeconds = latestLiveSaveAt ? Math.max(0, Math.round((Date.now() - new Date(latestLiveSaveAt).getTime()) / 1000)) : null;
@@ -744,7 +732,7 @@ async function handleApi(request, response, pathname) {
   if (request.method === 'GET' && pathname === '/api/status') return sendJson(response, 200, await buildStatus());
   if (request.method === 'GET' && pathname === '/api/settings') return sendJson(response, 200, readConfigBundle());
   if (request.method === 'GET' && pathname === '/api/manager/settings') return sendJson(response, 200, managerSettings);
-  if (request.method === 'GET' && pathname === '/api/backups') return sendJson(response, 200, { manager: listManagerBackups(), builtIn: countBuiltInBackups() });
+  if (request.method === 'GET' && pathname === '/api/backups') return sendJson(response, 200, { manager: listManagerBackups(), builtIn: listBuiltInBackups(SAVES_PATH, GAME_USER_SETTINGS_PATH) });
   if (request.method === 'GET' && pathname === '/api/activity') return sendJson(response, 200, { events: readActivity(), updateLog: tailFile(UPDATE_LOG_PATH) });
   if (request.method === 'GET' && pathname === '/api/mods') return sendJson(response, 200, modManager.list());
 
@@ -815,6 +803,12 @@ async function handleApi(request, response, pathname) {
     if (await isServerRunning()) return sendJson(response, 409, { error: 'Stop the server before restoring a backup.' });
     const body = await readJsonBody(request);
     return sendJson(response, 200, { ok: true, safetyBackup: restoreBackup(body.name) });
+  }
+  if (request.method === 'POST' && pathname === '/api/restore-built-in') {
+    if (await isServerRunning()) return sendJson(response, 409, { error: 'Stop the server before restoring a built-in backup.' });
+    if (await isUpdateRunning()) return sendJson(response, 409, { error: 'Wait for the server update to finish before restoring a built-in backup.' });
+    const body = await readJsonBody(request);
+    return sendJson(response, 200, { ok: true, ...restoreBuiltInBackup(body.name) });
   }
   if (request.method === 'POST' && pathname === '/api/open') {
     const body = await readJsonBody(request);

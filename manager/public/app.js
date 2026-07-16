@@ -25,6 +25,7 @@ const state = {
   bundle: null,
   baseline: null,
   backups: null,
+  backupView: 'portable',
   activity: null,
   mods: null,
   workshopLookup: null,
@@ -214,6 +215,7 @@ function updateActionStates() {
   $('#force-stop').disabled = blocked || !running;
   $('#update-server').disabled = blocked || running;
   $('#create-backup').disabled = blocked || running;
+  $$('.backup-restore').forEach((button) => { button.disabled = blocked || running; });
   if ($('#save-watchdog')) $('#save-watchdog').disabled = state.busy.has('watchdog');
   if ($('#startup-enabled')) $('#startup-enabled').disabled = state.busy.has('startup');
   if ($('#community-listing-enabled')) $('#community-listing-enabled').disabled = blocked || running || state.busy.has('community-listing');
@@ -938,14 +940,31 @@ async function uploadSelectedMod(file) {
   });
 }
 
+function setBackupView(view) {
+  if (!['portable', 'built-in'].includes(view)) return;
+  state.backupView = view;
+  $$('[data-backup-view]').forEach((button) => {
+    const active = button.dataset.backupView === view;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+  $('#backup-panel-portable').hidden = view !== 'portable';
+  $('#backup-panel-built-in').hidden = view !== 'built-in';
+}
+
 function renderBackups() {
   if (!state.backups || !state.status) return;
   const manager = state.backups.manager;
+  const builtIn = state.backups.builtIn || { backups: [], count: 0, worldId: null };
   $('#backup-autosave').textContent = `${state.status.autoSaveSeconds} seconds`;
   $('#backup-stat-auto').textContent = `${state.status.autoSaveSeconds} sec`;
   $('#backup-stat-rolling').textContent = state.status.rollingBackups ? 'Enabled' : 'Disabled';
-  $('#backup-stat-rolling-count').textContent = `${state.backups.builtIn.count} copies found`;
+  $('#backup-stat-rolling-count').textContent = `${builtIn.count} active-world copies`;
   $('#backup-stat-portable').textContent = manager.length;
+  $('#backup-tab-portable-count').textContent = manager.length;
+  $('#backup-tab-built-in-count').textContent = builtIn.count;
+
   const body = $('#backup-table-body');
   body.replaceChildren();
   $('#backup-empty').hidden = manager.length > 0;
@@ -955,10 +974,41 @@ function renderBackups() {
     const created = document.createElement('td'); created.textContent = formatDate(backup.createdAt);
     const size = document.createElement('td'); size.textContent = formatBytes(backup.bytes);
     const action = document.createElement('td');
-    const restore = document.createElement('button'); restore.className = 'button soft'; restore.textContent = 'Restore'; restore.disabled = state.status.running;
+    const restore = document.createElement('button'); restore.className = 'button soft backup-restore'; restore.textContent = 'Restore'; restore.disabled = state.status.running || state.status.updating;
     restore.addEventListener('click', () => handleRestore(backup.name));
     action.append(restore); row.append(name, created, size, action); body.append(row);
   }
+
+  const activeWorld = $('#backup-active-world');
+  activeWorld.textContent = builtIn.worldId ? `${builtIn.worldId.slice(0, 8)}…${builtIn.worldId.slice(-8)}` : 'Not detected';
+  activeWorld.title = builtIn.worldId || '';
+  const builtInBody = $('#built-in-backup-table-body');
+  builtInBody.replaceChildren();
+  const builtInBackups = builtIn.backups || [];
+  $('#built-in-backup-empty').hidden = builtInBackups.length > 0;
+  for (const backup of builtInBackups) {
+    const row = document.createElement('tr');
+    const recoveryPoint = document.createElement('td');
+    const time = document.createElement('div'); time.className = 'backup-time';
+    const timeIcon = document.createElement('span'); timeIcon.className = 'backup-time-icon'; timeIcon.textContent = '↶';
+    const timeCopy = document.createElement('span');
+    const timeStrong = document.createElement('strong'); timeStrong.textContent = formatDate(backup.createdAt);
+    const timeSmall = document.createElement('small'); timeSmall.textContent = relativeTime(backup.createdAt);
+    timeCopy.append(timeStrong, timeSmall); time.append(timeIcon, timeCopy); recoveryPoint.append(time);
+
+    const contents = document.createElement('td');
+    const chips = document.createElement('div'); chips.className = 'backup-contents';
+    const worldChip = document.createElement('span'); worldChip.className = 'backup-content-chip'; worldChip.textContent = 'World save';
+    const playerChip = document.createElement('span'); playerChip.className = 'backup-content-chip players'; playerChip.textContent = backup.players ? `${backup.players} player file${backup.players === 1 ? '' : 's'}` : 'No player files';
+    chips.append(worldChip, playerChip); contents.append(chips);
+
+    const size = document.createElement('td'); size.textContent = formatBytes(backup.bytes);
+    const action = document.createElement('td');
+    const restore = document.createElement('button'); restore.className = 'button soft backup-restore'; restore.textContent = 'Restore'; restore.disabled = state.status.running || state.status.updating;
+    restore.addEventListener('click', () => handleBuiltInRestore(backup));
+    action.append(restore); row.append(recoveryPoint, contents, size, action); builtInBody.append(row);
+  }
+  setBackupView(state.backupView);
 }
 
 async function refreshBackups() {
@@ -983,6 +1033,22 @@ async function handleRestore(name) {
     const result = await api('/api/restore', { method: 'POST', body: { name } });
     await refreshBackups();
     toast('World restored', `Safety copy: ${result.safetyBackup}`);
+  });
+}
+
+async function handleBuiltInRestore(backup) {
+  const confirmed = await confirmAction({
+    title: 'Restore this built-in backup?',
+    message: `The active world and its players will return to ${formatDate(backup.createdAt)}. PalSphere will create a portable safety backup of the current world first.`,
+    confirmText: 'Restore recovery point',
+    danger: true,
+    icon: '↶',
+  });
+  if (!confirmed) return;
+  await withBusy('restore', async () => {
+    const result = await api('/api/restore-built-in', { method: 'POST', body: { name: backup.name } });
+    await Promise.all([refreshBackups(), refreshStatus(), refreshActivity()]);
+    toast('Built-in backup restored', `Current world preserved as ${result.safetyBackup}.`);
   });
 }
 
@@ -1105,6 +1171,7 @@ function wireEvents() {
   $('#choose-mod-zip').addEventListener('click', chooseAndUploadMod);
   $('#mod-zip-file').addEventListener('change', (event) => { if (event.target.files[0]) uploadSelectedMod(event.target.files[0]); });
   $('#create-backup').addEventListener('click', handleBackup);
+  $$('[data-backup-view]').forEach((button) => button.addEventListener('click', () => setBackupView(button.dataset.backupView)));
   $('#update-server').addEventListener('click', handleUpdate);
   $('#save-watchdog').addEventListener('click', saveWatchdogSettings);
   $('#startup-enabled').addEventListener('change', handleStartupToggle);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.0 - 2026-07-16
+
+- Added separate portable and built-in backup tabs with active-world rolling recovery points and one-click restore controls.
+- Built-in backup counts now follow the configured active world instead of combining stale or unrelated save trees.
+- Built-in restores create a portable safety snapshot before replacing the matching world and player files.
+- The launcher now replaces a stale manager process when its version no longer matches the installed PalSphere files.
+
 ## 1.8.2 - 2026-07-12
 
 - Preserves a mod's numeric Steam Workshop ID as its server source-folder name so Palworld actually discovers and deploys it.

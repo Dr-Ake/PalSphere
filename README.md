@@ -19,7 +19,7 @@ PalSphere does **not** redistribute Palworld, SteamCMD, Node.js, DirectX, or Mic
 - Native Palworld Workshop server-mod management with Steam subscription discovery and ZIP import
 - Server compatibility validation plus install, update, enable/disable, and remove controls
 - Graceful save, shutdown, update, backup, and restore controls
-- Palworld rolling backups plus 12 portable world snapshots
+- Active-world rolling backup browsing and restoration plus 12 portable world snapshots
 - Bounded crash recovery with restart-loop protection
 - Quiet watchdog startup at Windows sign-in
 - Automatic portable safety backup before updates

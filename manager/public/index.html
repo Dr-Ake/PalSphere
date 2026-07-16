@@ -295,17 +295,52 @@
         </div>
 
         <article class="panel backup-list-panel">
-          <div class="panel-heading">
-            <div><p class="eyebrow">RESTORE POINTS</p><h3>Portable world backups</h3></div>
+          <div class="panel-heading backup-library-heading">
+            <div><p class="eyebrow">RESTORE POINTS</p><h3>World backup library</h3><p>Choose a portable safety snapshot or one of Palworld's rolling copies.</p></div>
             <button class="text-button" data-open-folder="saves">Open live saves</button>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Backup</th><th>Created</th><th>Size</th><th></th></tr></thead>
-              <tbody id="backup-table-body"></tbody>
-            </table>
+
+          <div class="backup-tabs" role="tablist" aria-label="Backup type">
+            <button class="backup-tab active" id="backup-tab-portable" type="button" role="tab" aria-selected="true" aria-controls="backup-panel-portable" data-backup-view="portable">
+              <span class="backup-tab-icon">&#9673;</span>
+              <span><strong>Portable backups</strong><small>PalSphere safety snapshots</small></span>
+              <b id="backup-tab-portable-count">0</b>
+            </button>
+            <button class="backup-tab" id="backup-tab-built-in" type="button" role="tab" aria-selected="false" aria-controls="backup-panel-built-in" data-backup-view="built-in">
+              <span class="backup-tab-icon rolling">&#8634;</span>
+              <span><strong>Built-in backups</strong><small>Palworld rolling recovery points</small></span>
+              <b id="backup-tab-built-in-count">0</b>
+            </button>
           </div>
-          <div id="backup-empty" class="empty-state"><strong>No portable backups yet</strong><p>Stop the server and create one before major changes or updates.</p></div>
+
+          <div class="backup-view-panel" id="backup-panel-portable" role="tabpanel" aria-labelledby="backup-tab-portable">
+            <div class="backup-view-intro">
+              <div><strong>Portable world backups</strong><p>Complete copies stored outside the live save folder and retained by PalSphere.</p></div>
+              <span class="mini-badge success">12 retained</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Backup</th><th>Created</th><th>Size</th><th></th></tr></thead>
+                <tbody id="backup-table-body"></tbody>
+              </table>
+            </div>
+            <div id="backup-empty" class="empty-state"><strong>No portable backups yet</strong><p>Stop the server and create one before major changes or updates.</p></div>
+          </div>
+
+          <div class="backup-view-panel" id="backup-panel-built-in" role="tabpanel" aria-labelledby="backup-tab-built-in" hidden>
+            <div class="backup-view-intro built-in-intro">
+              <div><strong>Active-world rolling backups</strong><p>Only recovery points belonging to the currently configured world are shown and counted.</p></div>
+              <span class="active-world-chip"><i></i><span>Active world</span><code id="backup-active-world">Not detected</code></span>
+            </div>
+            <div class="backup-safety-note"><span>i</span><p>Restoring rolls the world and player files back together. PalSphere creates a portable safety backup of the current world first.</p></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Recovery point</th><th>Contents</th><th>Size</th><th></th></tr></thead>
+                <tbody id="built-in-backup-table-body"></tbody>
+              </table>
+            </div>
+            <div id="built-in-backup-empty" class="empty-state"><strong>No built-in backups for the active world</strong><p>Start the server with rolling backups enabled to create recovery points.</p></div>
+          </div>
         </article>
       </section>
 

@@ -69,10 +69,15 @@ test('launcher identifies its own manager and cleans up an orphan after the inst
   const manager = fs.readFileSync(path.join(root, 'manager', 'server-manager.js'), 'utf8');
   const launcher = fs.readFileSync(path.join(root, 'manager', 'launch-manager.ps1'), 'utf8');
   assert.match(manager, /installRoot: ROOT/);
+  assert.match(launcher, /expectedManagerVersion/);
+  assert.match(launcher, /response\.version/);
+  assert.match(launcher, /StringComparison\]::OrdinalIgnoreCase/);
   assert.match(launcher, /response\.installRoot/);
   assert.match(launcher, /Compatibility with managers launched before installRoot/);
   assert.match(launcher, /Stop-OrphanedManager/);
   assert.match(launcher, /Test-Path -LiteralPath \$runningScript/);
+  assert.match(launcher, /resolvedExpectedScript/);
+  assert.match(launcher, /Invoke-RestMethod -Method Post.+\/api\/manager\/quit/);
   assert.match(launcher, /PalServer-Win64-Shipping-Cmd/);
   assert.match(launcher, /Stop-Process -Id \$listener\.OwningProcess/);
 });

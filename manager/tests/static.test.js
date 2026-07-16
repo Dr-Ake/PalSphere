@@ -95,3 +95,15 @@ test('native Palworld server mod management is wired into the UI', () => {
   assert.match(app, /PalSphere cannot subscribe for your Steam account/);
   assert.match(app, /Steam is open/);
 });
+
+test('portable and active-world built-in backups have separate restore tabs', () => {
+  const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+  const app = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
+  for (const id of ['backup-tab-portable', 'backup-tab-built-in', 'backup-panel-portable', 'backup-panel-built-in', 'built-in-backup-table-body', 'backup-active-world']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(app, /setBackupView/);
+  assert.match(app, /handleBuiltInRestore/);
+  assert.match(app, /\/api\/restore-built-in/);
+  assert.match(html, /Only recovery points belonging to the currently configured world are shown and counted/);
+});
